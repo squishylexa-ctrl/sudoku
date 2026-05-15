@@ -1,7 +1,7 @@
 {
   "name": "Neo Sudoku",
   "short_name": "Sudoku",
-  "start_url": "neo-sudoku.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#121212",
