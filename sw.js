@@ -1,7 +1,7 @@
 const CACHE_NAME = 'sudoku-v1';
 // Hier stehen die Dateien, die der Helfer speichern soll
 const ASSETS = [
-  './neo-sudoku.html',
+  './index.html',
   './manifest.json'
 ];
 
