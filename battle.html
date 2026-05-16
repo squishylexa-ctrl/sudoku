@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Neo Sudoku — Battle</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="sudoku-engine.js"></script>
+<script src="monsters.js"></script>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html,body { width:100%; height:100%; overflow:hidden; background:#080610; font-family:'Orbitron',sans-serif; color:#d0c8ff; }
+#app { position:fixed; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; overflow-y:auto; }
+button { font-family:inherit; cursor:pointer; border:none; outline:none; }
+button:active { opacity:0.75; transform:scale(0.97); }
+
+/* Scanlines */
+body::after {
+  content:''; position:fixed; inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);
+  pointer-events:none; z-index:9998;
+}
+
+/* Animations */
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+@keyframes bossHit { 0%,100%{transform:translateX(0) scale(1)} 30%{transform:translateX(-8px) scale(0.95)} 60%{transform:translateX(6px) scale(1.05)} }
+@keyframes bossAttack { 0%,100%{transform:translateY(0) scale(1)} 40%{transform:translateY(10px) scale(1.1)} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+@keyframes floatUp { 0%{opacity:1;transform:translateY(0) scale(1.2)} 100%{opacity:0;transform:translateY(-50px) scale(0.8)} }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.3)} 50%{box-shadow:0 0 0 8px rgba(255,255,255,0)} }
+@keyframes glowPulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+@keyframes slideIn { from{transform:translateX(-20px);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes pop { 0%{transform:scale(0.8);opacity:0} 60%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+@keyframes bubblePop { 0%{opacity:0;transform:scale(0.5) translateY(10px)} 60%{transform:scale(1.05) translateY(-2px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
+
+.shake { animation:shake 0.4s ease; }
+.boss-hit { animation:bossHit 0.4s ease; }
+.boss-attack-anim { animation:bossAttack 0.5s ease; }
+.float-dmg { animation:floatUp 1s ease forwards; position:absolute; pointer-events:none; z-index:100; font-size:14px; font-weight:900; text-shadow:2px 2px 0 #000; }
+
+/* ── SCREENS ── */
+.screen { width:100%; max-width:420px; padding:16px; display:flex; flex-direction:column; gap:12px; }
+
+/* ── MENU ── */
+.menu-hero {
+  text-align:center; padding:24px 16px 16px;
+  background:radial-gradient(ellipse at 50% 0%, rgba(160,128,255,0.12) 0%, transparent 70%);
+  border-radius:16px; border:1px solid rgba(160,128,255,0.15);
+}
+.menu-title { font-size:22px; font-weight:900; color:#c8b8ff; text-shadow:0 0 20px #a080ff,0 0 40px #7060e080; letter-spacing:2px; }
+.menu-sub { font-size:9px; color:#665588; letter-spacing:3px; margin-top:4px; }
+
+.stage-card {
+  border-radius:12px; padding:14px; border:1px solid;
+  display:flex; align-items:center; gap:12px;
+  cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden;
+}
+.stage-card::before { content:''; position:absolute; inset:0; opacity:0.06; pointer-events:none; }
+.stage-card:hover { transform:translateX(4px); }
+.stage-card.locked { opacity:0.35; cursor:default; }
+.stage-card.locked:hover { transform:none; }
+
+.stage-emoji { font-size:28px; flex-shrink:0; }
+.stage-info { flex:1; }
+.stage-name { font-size:11px; font-weight:700; letter-spacing:1px; }
+.stage-diff { font-size:8px; opacity:0.6; margin-top:2px; }
+.stage-progress { font-size:7px; opacity:0.5; margin-top:4px; }
+.stage-lock { font-size:18px; margin-left:auto; opacity:0.4; }
+
+/* ── BATTLE SCREEN ── */
+.battle-wrap { width:100%; max-width:420px; display:flex; flex-direction:column; padding:8px; gap:6px; }
+
+/* Header */
+.battle-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 10px;
+}
+.back-btn {
+  font-size:9px; padding:5px 10px; border-radius:6px;
+  background:rgba(160,128,255,0.1); border:1px solid rgba(160,128,255,0.3);
+  color:#a080ff; text-shadow:0 0 6px #a080ff;
+}
+.fight-counter { font-size:9px; color:#665588; letter-spacing:1px; }
+.stage-badge { font-size:9px; padding:4px 8px; border-radius:6px; font-weight:700; }
+
+/* Boss Panel */
+.boss-panel {
+  border-radius:12px; padding:12px; border:1px solid;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  position:relative; overflow:hidden;
+}
+.boss-panel::before { content:''; position:absolute; inset:0; opacity:0.05; pointer-events:none; border-radius:12px; }
+
+.boss-name { font-size:10px; font-weight:700; letter-spacing:2px; }
+.boss-canvas-wrap { position:relative; }
+
+/* Sprechblase */
+.speech-bubble {
+  position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+  background:#1a1830; border:1px solid rgba(255,255,255,0.2);
+  border-radius:8px; padding:5px 10px; font-size:8px; color:#d0c8ff;
+  white-space:nowrap; pointer-events:none;
+  animation:bubblePop 0.3s ease forwards;
+  z-index:10;
+}
+.speech-bubble::after {
+  content:''; position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
+  border:3px solid transparent; border-top-color:#1a1830;
+}
+
+.boss-hp-wrap { width:100%; }
+.hp-label { display:flex; justify-content:space-between; font-size:7px; color:#665588; margin-bottom:3px; }
+.hp-bar-outer { height:10px; background:#0a0918; border-radius:5px; overflow:hidden; border:1px solid rgba(255,255,255,0.05); }
+.hp-bar-inner { height:100%; border-radius:5px; transition:width 0.4s cubic-bezier(.4,0,.2,1); position:relative; }
+.hp-bar-inner::after { content:''; position:absolute; top:2px; left:4px; right:4px; height:2px; background:rgba(255,255,255,0.25); border-radius:1px; }
+
+/* Effect Banner */
+.effect-banner {
+  font-size:8px; text-align:center; padding:5px 10px;
+  border-radius:6px; border:1px solid; animation:slideIn 0.3s ease;
+}
+
+/* Player Panel */
+.player-panel {
+  border-radius:10px; padding:10px 12px; border:1px solid rgba(160,128,255,0.15);
+  background:rgba(160,128,255,0.05);
+  display:flex; align-items:center; gap:10px;
+}
+.player-avatar { font-size:24px; flex-shrink:0; }
+.player-stats { flex:1; display:flex; flex-direction:column; gap:4px; }
+.player-stat-row { display:flex; align-items:center; gap:6px; }
+.player-stat-label { font-size:7px; color:#665588; width:24px; }
+.player-bar-outer { flex:1; height:7px; background:#0a0918; border-radius:3px; overflow:hidden; }
+.player-bar-inner { height:100%; border-radius:3px; transition:width 0.4s ease; }
+.player-stat-val { font-size:7px; color:#665588; width:40px; text-align:right; }
+
+/* Sudoku Board */
+.board-wrap { position:relative; align-self:center; }
+.board-grid { display:grid; grid-template-columns:repeat(9,1fr); position:absolute; top:0; left:0; }
+.cell {
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; position:relative;
+  cursor:pointer; border-right:1px solid #1e1a30; border-bottom:1px solid #1e1a30;
+  background:#0e0c1a; transition:background 0.12s; user-select:none;
+}
+.cell:hover { background:#1a1828; }
+.cell.selected { background:#1a0e3a !important; }
+.cell.same-num { background:#0e2a1a !important; }
+.cell.same-group { background:#110e20 !important; }
+.cell.frozen { background:#0a1830 !important; cursor:default; }
+.cell.cursed { background:#2a0a0a !important; }
+.board-svg { position:absolute; top:0; left:0; pointer-events:none; z-index:4; }
+.particle-canvas { position:fixed; top:0; left:0; pointer-events:none; z-index:9997; width:100vw; height:100vh; }
+
+/* Numpad */
+.numpad { display:grid; grid-template-columns:repeat(9,1fr); gap:3px; }
+.num-btn {
+  border-radius:6px; border:1px solid; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:2px; transition:all 0.1s;
+}
+.num-btn:active { transform:scale(0.92); }
+
+/* Action Buttons */
+.action-btns { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.action-btn {
+  border-radius:8px; border:1px solid; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:2px;
+  font-size:18px; transition:all 0.12s;
+}
+.action-btn span { font-size:8px; }
+
+/* Potion Bar */
+.potion-bar { display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap; }
+.potion-btn {
+  padding:5px 10px; border-radius:8px; font-size:9px;
+  border:1px solid; background:rgba(255,255,255,0.05);
+  display:flex; align-items:center; gap:5px; cursor:pointer;
+  transition:all 0.15s;
+}
+.potion-btn:hover { transform:scale(1.05); }
+.potion-btn:disabled { opacity:0.3; cursor:default; transform:none; }
+
+/* Battle Log */
+.battle-log {
+  background:#0a0918; border:1px solid #1e1a30; border-radius:8px;
+  padding:8px 10px; font-size:7px; color:#665588; line-height:2;
+  min-height:44px; max-height:44px; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:flex-end;
+}
+.log-line { animation:fadeIn 0.3s ease; }
+.log-good { color:#52e07c; }
+.log-bad  { color:#ff4466; }
+.log-info { color:#a080ff; }
+.log-warn { color:#ffd700; }
+
+/* Overlays */
+.overlay {
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:500;
+  gap:14px; animation:fadeIn 0.4s ease; padding:20px;
+}
+.overlay-title { font-size:20px; font-weight:900; text-shadow:0 0 20px currentColor; }
+.overlay-sub { font-size:9px; color:#665588; text-align:center; line-height:1.8; }
+.overlay-btn {
+  padding:12px 24px; border-radius:8px; font-family:inherit;
+  font-size:10px; font-weight:700; cursor:pointer; transition:all 0.15s;
+  border:1px solid; letter-spacing:1px;
+}
+.overlay-btn:hover { transform:scale(1.05); }
+
+/* Reward Screen */
+.reward-card {
+  background:#0e0c1a; border-radius:16px; padding:20px;
+  border:1px solid; text-align:center; display:flex; flex-direction:column;
+  align-items:center; gap:12px; width:100%; max-width:320px;
+  animation:pop 0.5s cubic-bezier(.4,0,.2,1);
+}
+
+/* Player Level Up */
+.levelup-badge {
+  padding:8px 16px; border-radius:8px; font-size:10px; font-weight:700;
+  background:rgba(255,215,0,0.1); border:1px solid #ffd700;
+  color:#ffd700; text-shadow:0 0 8px #ffd700;
+  animation:pulse 1s ease 3;
+}
+
+/* Intro Screen */
+.intro-panel {
+  background:#0e0c1a; border-radius:14px; padding:20px;
+  border:1px solid; display:flex; flex-direction:column;
+  align-items:center; gap:12px; text-align:center;
+  animation:pop 0.4s ease;
+}
+.intro-quote {
+  font-size:10px; color:#d0c8ff; line-height:1.8;
+  padding:10px 14px; border-radius:8px;
+  background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+  font-style:italic;
+}
+</style>
+</head>
+<body>
+<canvas class="particle-canvas" id="particle-canvas"></canvas>
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// BATTLE STATE
+// ═══════════════════════════════════════════════════════════════
+const app = document.getElementById('app');
+const pCanvas = document.getElementById('particle-canvas');
+const pCtx = pCanvas.getContext('2d');
+pCanvas.width = window.innerWidth;
+pCanvas.height = window.innerHeight;
+
+let bstate = {
+  screen: 'menu',
+  stageIdx: 0,
+  fightIdx: 0,
+  monster: null,
+  monsterHp: 0,
+  monsterMaxHp: 0,
+  playerHp: 0,
+  playerMaxHp: 0,
+  solution: null,
+  cages: [],
+  cageMap: {},
+  userGrid: null,
+  notes: null,
+  selected: null,
+  noteMode: false,
+  history: [],
+  completedCages: new Set(),
+  correctCount: 0,
+  effects: {},
+  frozenCells: [],
+  cursedCells: [],
+  hiddenSumCages: [],
+  fakeSumData: null,
+  shuffledNumpad: null,
+  hintsBlocked: 0,
+  hintsLeft: 3,
+  potions: [],
+  battleData: null,
+  monsterCanvas: null,
+  monsterAnimT: 0,
+  monsterAnimId: null,
+  speechBubble: null,
+  speechTimeout: null,
+  logLines: [],
+  cellSize: 36,
+  fogBox: null,
+  allSameColor: false,
+  lastXpGain: 0,
+  lastLevelResult: null,
+};
+
+// ── PARTIKEL ──────────────────────────────────────────────────────
+let particles = [];
+function spawnParticles(x, y, color, count=8) {
+  for(let i=0;i<count;i++) {
+    const angle=Math.random()*Math.PI*2, speed=1+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-2,life:1,color,size:2+Math.random()*3});
+  }
+}
+function animParticles() {
+  pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
+  particles=particles.filter(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life-=0.025;
+    if(p.life<=0)return false;
+    pCtx.globalAlpha=p.life;
+    pCtx.fillStyle=p.color;
+    pCtx.fillRect(p.x,p.y,p.size,p.size);
+    return true;
+  });
+  pCtx.globalAlpha=1;
+  requestAnimationFrame(animParticles);
+}
+animParticles();
+
+// ── FLOAT DAMAGE ─────────────────────────────────────────────────
+function floatDmg(text, color, el) {
+  if(!el) return;
+  const rect=el.getBoundingClientRect();
+  const d=document.createElement('div');
+  d.className='float-dmg';
+  d.textContent=text; d.style.color=color;
+  d.style.left=(rect.left+rect.width/2-20)+'px';
+  d.style.top=(rect.top-10)+'px';
+  d.style.position='fixed';
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(),1000);
+}
+
+// ── HELPER ───────────────────────────────────────────────────────
+const el=(tag,props={},children=[])=>{
+  const e=document.createElement(tag);
+  if(props.style) Object.assign(e.style,props.style);
+  Object.entries(props).forEach(([k,v])=>{ if(k!=='style') e[k]=v; });
+  children.forEach(c=>e.appendChild(c));
+  return e;
+};
+
+function addLog(text, type='') {
+  bstate.logLines.push({text,type});
+  if(bstate.logLines.length>3) bstate.logLines.shift();
+  const log=document.getElementById('battle-log');
+  if(log) log.innerHTML=bstate.logLines.map(l=>`<div class="log-line ${l.type?'log-'+l.type:''}">${l.text}</div>`).join('');
+}
+
+function showSpeech(text) {
+  const wrap=document.getElementById('boss-canvas-wrap');
+  if(!wrap) return;
+  const old=wrap.querySelector('.speech-bubble');
+  if(old) old.remove();
+  if(bstate.speechTimeout) clearTimeout(bstate.speechTimeout);
+  const b=document.createElement('div');
+  b.className='speech-bubble';
+  b.textContent=`"${text}"`;
+  wrap.appendChild(b);
+  bstate.speechTimeout=setTimeout(()=>b.remove(), 3000);
+}
+
+function getMonsterEl() { return document.getElementById('boss-canvas-wrap'); }
+
+// ── INIT FIGHT ────────────────────────────────────────────────────
+function initFight() {
+  const stage=STAGES[bstate.stageIdx];
+  const fightCfg=stage.monsters[bstate.fightIdx];
+  const monsterDef=MONSTERS[fightCfg.id];
+
+  bstate.monster={...monsterDef, ...fightCfg};
+  bstate.monsterMaxHp=Math.round(monsterDef.baseHp*fightCfg.hpMult);
+  bstate.monsterHp=bstate.monsterMaxHp;
+
+  // Spieler HP aus Level
+  const bd=loadBattleData();
+  const lvl=calcBattleLevel(bd.totalXp);
+  bstate.playerMaxHp=getPlayerMaxHp(lvl.level);
+  if(bstate.fightIdx===0) bstate.playerHp=bstate.playerMaxHp;
+  bstate.playerHp=Math.min(bstate.playerHp, bstate.playerMaxHp);
+
+  // Sudoku generieren
+  const game=generateNewGame(stage.difficulty);
+  bstate.solution=game.solution;
+  bstate.cages=game.cages;
+  bstate.cageMap=game.cageMap;
+  bstate.userGrid=game.userGrid;
+  bstate.notes=game.notes;
+  bstate.selected=null;
+  bstate.noteMode=false;
+  bstate.history=[];
+  bstate.completedCages=new Set();
+  bstate.correctCount=0;
+  bstate.logLines=[];
+
+  // Effekte zurücksetzen
+  bstate.frozenCells=[];
+  bstate.cursedCells=[];
+  bstate.hiddenSumCages=[];
+  bstate.fakeSumData=null;
+  bstate.shuffledNumpad=null;
+  bstate.hintsBlocked=0;
+
+  // Canvas
+  if(bstate.monsterAnimId) cancelAnimationFrame(bstate.monsterAnimId);
+  bstate.monsterAnimT=0;
+
+  bstate.battleData=bd;
+  bstate.screen='intro';
+  render();
+}
+
+// ── BOARD EFFEKTE ─────────────────────────────────────────────────
+function applyEffect(type) {
+  const cages=bstate.cages;
+  const grid=bstate.userGrid;
+  const sol=bstate.solution;
+
+  switch(type) {
+    case 'hideSums': {
+      const idxs=[...Array(cages.length).keys()].filter(i=>!bstate.completedCages.has(i));
+      bstate.hiddenSumCages=idxs.sort(()=>Math.random()-0.5).slice(0,3);
+      addLog('🍄 Sporenwolke! 3 Käfig-Summen verschwinden...', 'bad');
+      break;
+    }
+    case 'fogBox': {
+      // Nebel über eine 3x3 Box — als Overlay
+      bstate.fogBox=Math.floor(Math.random()*9); // 0-8 (welche Box)
+      addLog('🦇 Finsternis! Eine Box liegt im Nebel!', 'bad');
+      setTimeout(()=>{ bstate.fogBox=null; renderGame(); }, 8000);
+      break;
+    }
+    case 'stealNumber': {
+      // Klaue eine zufällige eingetragene Zahl
+      const filled=[];
+      for(let r=0;r<9;r++) for(let c=0;c<9;c++) if(grid[r][c]>0) filled.push([r,c]);
+      if(filled.length>0) {
+        const [r,c]=filled[Math.floor(Math.random()*filled.length)];
+        bstate.history.push({r,c,prev:grid[r][c],prevNote:null});
+        grid[r][c]=0;
+        addLog('👻 Besessenheit! Eine deiner Zahlen wurde geklaut!', 'bad');
+      }
+      break;
+    }
+    case 'hideNotes': {
+      for(let r=0;r<9;r++) for(let c=0;c<9;c++) bstate.notes[r][c].clear();
+      addLog('🐀 Rattenschwarm! Alle Notizen sind weg!', 'bad');
+      break;
+    }
+    case 'cursedCells': {
+      const empty=[];
+      for(let r=0;r<9;r++) for(let c=0;c<9;c++) if(grid[r][c]===0) empty.push([r,c]);
+      bstate.cursedCells=empty.sort(()=>Math.random()-0.5).slice(0,2);
+      addLog('💀 Fluch! 2 Zellen sind verflucht — Fehler kostet doppelt!', 'bad');
+      break;
+    }
+    case 'freezeCells': {
+      const empty=[];
+      for(let r=0;r<9;r++) for(let c=0;c<9;c++) if(grid[r][c]===0) empty.push([r,c]);
+      bstate.frozenCells=empty.sort(()=>Math.random()-0.5).slice(0,3);
+      addLog('🪨 Erdbeben! 3 Zellen sind eingefroren!', 'bad');
+      setTimeout(()=>{ bstate.frozenCells=[]; renderGame(); }, 10000);
+      break;
+    }
+    case 'blockHints': {
+      bstate.hintsBlocked=5;
+      addLog('🧟 Fluch des Pharaos! Tipps für 5 Züge gesperrt!', 'bad');
+      break;
+    }
+    case 'shuffleColors': {
+      bstate.allSameColor=true;
+      addLog('🧙 Farbzauber! Alle Käfig-Farben sehen gleich aus!', 'bad');
+      setTimeout(()=>{ bstate.allSameColor=false; renderGame(); }, 10000);
+      break;
+    }
+    case 'shuffleNumpad': {
+      const nums=[1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-0.5);
+      bstate.shuffledNumpad=nums;
+      addLog('💠 Datenfehler! Numpad ist durchgemischt!', 'bad');
+      setTimeout(()=>{ bstate.shuffledNumpad=null; renderGame(); }, 8000);
+      break;
+    }
+    case 'fakeSums': {
+      const fakeMap={};
+      bstate.cages.forEach((cage,i)=>{ fakeMap[i]=cage.sum+Math.floor(Math.random()*10)-5; });
+      bstate.fakeSumData=fakeMap;
+      addLog('💻 Syntax Error! Käfig-Summen sind falsch!', 'bad');
+      setTimeout(()=>{ bstate.fakeSumData=null; renderGame(); }, 8000);
+      break;
+    }
+    case 'chaos': {
+      const all=['hideSums','stealNumber','cursedCells','freezeCells','shuffleNumpad'];
+      const pick=all.sort(()=>Math.random()-0.5).slice(0,2);
+      pick.forEach(e=>applyEffect(e));
+      addLog('🐉 VOID-CHAOS! Doppelter Angriff!', 'bad');
+      break;
+    }
+  }
+  renderGame();
+}
+
+// ── SCHADEN BERECHNUNG ────────────────────────────────────────────
+function getDamageToMonster(cage) {
+  const res=bstate.monster.resistance;
+  return Math.max(1, Math.round(cage.sum * res));
+}
+
+function getDamageToPlayer(isCursed=false) {
+  const base=8+bstate.stageIdx*4;
+  return isCursed ? base*2 : base;
+}
+
+function damageMonster(dmg, cageEl) {
+  bstate.monsterHp=Math.max(0, bstate.monsterHp-dmg);
+  const wrap=document.getElementById('boss-canvas-wrap');
+  if(wrap){ wrap.classList.remove('boss-hit'); void wrap.offsetWidth; wrap.classList.add('boss-hit'); }
+  const bossArea=document.getElementById('boss-panel');
+  if(bossArea) floatDmg(`-${dmg}`, '#ff6666', bossArea);
+  spawnParticles(window.innerWidth/2, 120, bstate.monster.color, 6);
+  updateBossHpBar();
+  if(bstate.monsterHp<=0) {
+    setTimeout(fightWon, 400);
+  }
+}
+
+function damagePlayer(dmg) {
+  bstate.playerHp=Math.max(0, bstate.playerHp-dmg);
+  const pp=document.getElementById('player-panel');
+  if(pp){ pp.classList.remove('shake'); void pp.offsetWidth; pp.classList.add('shake'); }
+  floatDmg(`-${dmg} HP`, '#ff4466', pp);
+  updatePlayerHpBar();
+  if(bstate.playerHp<=0) {
+    setTimeout(gameOver, 400);
+  }
+}
+
+function updateBossHpBar() {
+  const bar=document.getElementById('boss-hp-bar');
+  const txt=document.getElementById('boss-hp-text');
+  if(!bar||!txt) return;
+  const pct=Math.max(0,bstate.monsterHp/bstate.monsterMaxHp*100);
+  bar.style.width=pct+'%';
+  txt.textContent=`${Math.max(0,bstate.monsterHp)} / ${bstate.monsterMaxHp}`;
+  if(pct>50) bar.style.background='linear-gradient(90deg,#e05252,#f07070)';
+  else if(pct>25) bar.style.background='linear-gradient(90deg,#e09030,#f0b050)';
+  else bar.style.background='linear-gradient(90deg,#606060,#909090)';
+}
+
+function updatePlayerHpBar() {
+  const bar=document.getElementById('player-hp-bar');
+  const txt=document.getElementById('player-hp-text');
+  if(!bar||!txt) return;
+  const pct=Math.max(0,bstate.playerHp/bstate.playerMaxHp*100);
+  bar.style.width=pct+'%';
+  txt.textContent=`${Math.max(0,bstate.playerHp)} / ${bstate.playerMaxHp}`;
+  if(pct>50) bar.style.background='linear-gradient(90deg,#52e07c,#70f090)';
+  else if(pct>25) bar.style.background='linear-gradient(90deg,#e0e052,#f0f070)';
+  else bar.style.background='linear-gradient(90deg,#e05252,#f07070)';
+}
+
+// ── INPUT ─────────────────────────────────────────────────────────
+function inputNum(displayN) {
+  const [r,c]=bstate.selected||[];
+  if(r===undefined) return;
+  if(bstate.frozenCells.some(([fr,fc])=>fr===r&&fc===c)) {
+    addLog('❄️ Diese Zelle ist eingefroren!', 'warn'); return;
+  }
+
+  const n=bstate.shuffledNumpad ? bstate.shuffledNumpad[displayN-1] : displayN;
+
+  if(bstate.noteMode) {
+    const notes=bstate.notes[r][c];
+    if(bstate.userGrid[r][c]>0) return;
+    notes.has(n)?notes.delete(n):notes.add(n);
+    renderGame(); return;
+  }
+
+  bstate.history.push({r,c,prev:bstate.userGrid[r][c]});
+  bstate.userGrid[r][c]=n;
+  bstate.notes[r][c].clear();
+
+  const isWrong=n!==bstate.solution[r][c];
+  if(isWrong) {
+    // Fehler → Boss-Angriff
+    const cell=document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+    if(cell){cell.classList.remove('shake');void cell.offsetWidth;cell.classList.add('shake');}
+
+    const isCursed=bstate.cursedCells.some(([cr,cc])=>cr===r&&cc===c);
+    const dmg=getDamageToPlayer(isCursed);
+    damagePlayer(dmg);
+
+    if(isCursed) addLog(`💀 VERFLUCHT! Du nimmst ${dmg} Schaden (doppelt)!`, 'bad');
+    else addLog(`❌ Falsch! Boss greift an! -${dmg} HP`, 'bad');
+
+    // Boss-Fähigkeit auslösen wenn konfiguriert
+    const cfg=bstate.monster;
+    if(cfg.abilityEvery && bstate.correctCount>0 && bstate.correctCount%cfg.abilityEvery===0) {
+      triggerBossAbility();
+    }
+
+    // Spruch bei wenig HP
+    if(bstate.playerHp/bstate.playerMaxHp<0.25) {
+      showSpeech(getRandomQuote(MONSTERS[bstate.monster.id],'lowHp')||'...');
+    } else {
+      showSpeech(getRandomQuote(MONSTERS[bstate.monster.id],'attack')||'!');
+    }
+
+    renderGame(); return;
+  }
+
+  // Richtig!
+  bstate.correctCount++;
+  if(bstate.hintsBlocked>0) bstate.hintsBlocked--;
+
+  // Käfig-Schaden
+  const ci=bstate.cageMap[`${r},${c}`];
+  const cage=bstate.cages[ci];
+  const cellDmg=Math.max(1,Math.round((cage.sum/cage.cells.length)*bstate.monster.resistance));
+  damageMonster(cellDmg);
+  addLog(`✅ Richtig! Boss: -${cellDmg} HP`, 'good');
+
+  // Käfig komplett?
+  if(isCageDone(cage, bstate.userGrid)) {
+    if(!bstate.completedCages.has(ci)) {
+      bstate.completedCages.add(ci);
+      const cageDmg=getDamageToMonster(cage);
+      damageMonster(cageDmg);
+      // HP heilen
+      const heal=Math.round(bstate.playerMaxHp*0.05);
+      bstate.playerHp=Math.min(bstate.playerMaxHp, bstate.playerHp+heal);
+      updatePlayerHpBar();
+      addLog(`⚡ KÄFIG! Boss: -${cageDmg} HP! Du: +${heal} HP`, 'good');
+      spawnParticles(window.innerWidth/2, 150, '#52e07c', 12);
+    }
+  }
+
+  // Idle-Spruch alle X Züge
+  const m=MONSTERS[bstate.monster.id];
+  if(bstate.correctCount%4===0) {
+    const hp=bstate.monsterHp/bstate.monsterMaxHp;
+    if(hp<0.25) showSpeech(getRandomQuote(m,'lowHp')||'...');
+    else showSpeech(getRandomQuote(m,'idle')||'...');
+  }
+
+  // Boss-Fähigkeit
+  const cfg=bstate.monster;
+  if(cfg.abilityEvery && bstate.correctCount%cfg.abilityEvery===0) {
+    setTimeout(triggerBossAbility, 500);
+  }
+
+  // Sudoku komplett?
+  if(bstate.userGrid.every((row,ri)=>row.every((v,ci)=>v===bstate.solution[ri][ci]))) {
+    setTimeout(()=>{ damageMonster(bstate.monsterHp); }, 300);
+    return;
+  }
+
+  renderGame();
+}
+
+function triggerBossAbility() {
+  const m=bstate.monster;
+  if(!m.ability) return;
+  showSpeech(getRandomQuote(MONSTERS[m.id],'attack')||m.abilityText||'...');
+  addLog(m.abilityText||'Boss setzt Fähigkeit ein!', 'bad');
+  // Boss-Angriff Animation
+  const wrap=document.getElementById('boss-canvas-wrap');
+  if(wrap){wrap.classList.remove('boss-attack-anim');void wrap.offsetWidth;wrap.classList.add('boss-attack-anim');}
+  applyEffect(m.ability);
+}
+
+function usePotion(type) {
+  const idx=bstate.potions.indexOf(type);
+  if(idx===-1) return;
+  bstate.potions.splice(idx,1);
+  if(type==='small') {
+    const h=Math.round(bstate.playerMaxHp*0.3);
+    bstate.playerHp=Math.min(bstate.playerMaxHp,bstate.playerHp+h);
+    addLog(`🧪 Kleiner Heiltrank: +${h} HP`, 'good');
+  } else if(type==='large') {
+    const h=Math.round(bstate.playerMaxHp*0.6);
+    bstate.playerHp=Math.min(bstate.playerMaxHp,bstate.playerHp+h);
+    addLog(`🧪 Großer Heiltrank: +${h} HP`, 'good');
+  } else if(type==='crystal') {
+    bstate.frozenCells=[];
+    bstate.cursedCells=[];
+    bstate.hiddenSumCages=[];
+    addLog('💎 Schutzkristall: Alle Effekte aufgehoben!', 'good');
+  }
+  updatePlayerHpBar();
+  renderGame();
+}
+
+function undoAction() {
+  if(!bstate.history.length) return;
+  const {r,c,prev}=bstate.history.pop();
+  bstate.userGrid[r][c]=prev;
+  renderGame();
+}
+
+function giveHint() {
+  if(bstate.hintsLeft<=0||!bstate.selected||bstate.hintsBlocked>0) return;
+  const[r,c]=bstate.selected;
+  if(bstate.userGrid[r][c]===bstate.solution[r][c]) return;
+  bstate.history.push({r,c,prev:bstate.userGrid[r][c]});
+  bstate.userGrid[r][c]=bstate.solution[r][c];
+  bstate.notes[r][c].clear();
+  bstate.hintsLeft--;
+  addLog(`💡 Tipp verwendet (${bstate.hintsLeft} übrig)`, 'info');
+  renderGame();
+}
+
+// ── FIGHT WON ────────────────────────────────────────────────────
+function fightWon() {
+  const m=MONSTERS[bstate.monster.id];
+  showSpeech(getRandomQuote(m,'defeat')||'...');
+  addLog(`🏆 ${bstate.monster.name} besiegt!`, 'info');
+
+  const xpGain=50+bstate.stageIdx*30+(bstate.monster.isFinalBoss?100:0);
+  const result=addBattleXP(xpGain);
+
+  const isFinalFight=bstate.fightIdx===STAGES[bstate.stageIdx].monsters.length-1;
+
+  // Fortschritt speichern
+  const bd=loadBattleData();
+  const stageId=STAGES[bstate.stageIdx].id;
+  bd[`stage${stageId}Fights`]=bstate.fightIdx+1;
+  saveBattleData(bd);
+
+  if(isFinalFight) {
+    bstate.screen='stageclear';
+  } else {
+    bstate.screen='reward';
+  }
+  bstate.lastXpGain=xpGain;
+  bstate.lastLevelResult=result;
+  bstate.fightIdx++;
+  render();
+}
+
+function gameOver() {
+  bstate.screen='gameover';
+  render();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function render() {
+  app.innerHTML='';
+  document.body.style.background=bstate.screen==='battle'?
+    STAGES[bstate.stageIdx].bg : '#080610';
+
+  if(bstate.screen==='menu') renderMenu();
+  else if(bstate.screen==='intro') renderIntro();
+  else if(bstate.screen==='battle') renderBattle();
+  else if(bstate.screen==='reward') renderReward();
+  else if(bstate.screen==='stageclear') renderStageClear();
+  else if(bstate.screen==='gameover') renderGameOver();
+  else if(bstate.screen==='victory') renderVictory();
+}
+
+// ── MENU ──────────────────────────────────────────────────────────
+function renderMenu() {
+  const bd=loadBattleData();
+  const lvl=calcBattleLevel(bd.totalXp);
+  const screen=document.createElement('div');
+  screen.className='screen';
+  screen.style.paddingTop='24px';
+
+  // Hero
+  const hero=document.createElement('div');
+  hero.className='menu-hero';
+  const pct=Math.round(lvl.currentXp/lvl.neededXp*100);
+  hero.innerHTML=`
+    <div class="menu-title">⚔ BATTLE MODUS</div>
+    <div class="menu-sub">NEO SUDOKU</div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:center">
+      <span style="font-size:11px;color:#ffd700;text-shadow:0 0 8px #ffd700">LV ${lvl.level}</span>
+      <span style="font-size:9px;color:#665588">${getBattleTitle(lvl.level)}</span>
+    </div>
+    <div style="background:#1a1830;border-radius:99px;height:6px;overflow:hidden;margin:6px 0 2px;width:100%">
+      <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#a080ff,#c0a0ff);border-radius:99px;box-shadow:0 0 6px #a080ff;transition:width 0.6s ease"></div>
+    </div>
+    <div style="font-size:8px;color:#445566">${lvl.currentXp} / ${lvl.neededXp} XP</div>
+    <div style="font-size:9px;color:#665588;margin-top:6px">❤️ Max HP: ${getPlayerMaxHp(lvl.level)}</div>
+  `;
+  screen.appendChild(hero);
+
+  // Tränke
+  if(bstate.potions.length>0) {
+    const ph=document.createElement('div');
+    ph.style.cssText='font-size:8px;color:#665588;letter-spacing:1px;text-align:center';
+    ph.textContent='INVENTAR';
+    screen.appendChild(ph);
+    const pb=document.createElement('div');
+    pb.className='potion-bar';
+    const counts={};
+    bstate.potions.forEach(p=>counts[p]=(counts[p]||0)+1);
+    Object.entries(counts).forEach(([type,count])=>{
+      const icons={small:'🧪',large:'🍶',crystal:'💎'};
+      const names={small:'Heiltrank',large:'Gr. Trank',crystal:'Kristall'};
+      const b=document.createElement('button');
+      b.className='potion-btn'; b.style.borderColor='rgba(160,128,255,0.3)';
+      b.innerHTML=`${icons[type]} ${names[type]} ×${count}`;
+      pb.appendChild(b);
+    });
+    screen.appendChild(pb);
+  }
+
+  // Stage Cards
+  const sh=document.createElement('div');
+  sh.style.cssText='font-size:8px;color:#665588;letter-spacing:2px;text-align:center;margin-top:4px';
+  sh.textContent='WÄHLE DEINE STUFE';
+  screen.appendChild(sh);
+
+  STAGES.forEach((stage,i)=>{
+    const bd2=loadBattleData();
+    const unlocked=bd2.unlockedStages.includes(stage.id);
+    const completed=bd2.completedStages.includes(stage.id);
+    const fightsDone=bd2[`stage${stage.id}Fights`]||0;
+
+    const card=document.createElement('div');
+    card.className=`stage-card ${!unlocked?'locked':''}`;
+    card.style.cssText=`border-color:${unlocked?stage.color+'40':'#2a2040'};background:${unlocked?stage.color+'08':'transparent'}`;
+
+    card.innerHTML=`
+      <div class="stage-emoji">${stage.emoji}</div>
+      <div class="stage-info">
+        <div class="stage-name" style="color:${unlocked?stage.color:'#445566'};text-shadow:${unlocked?`0 0 8px ${stage.color}`:'none'}">${stage.name}</div>
+        <div class="stage-diff">${['Einfach','Mittel','Schwer','Boshaft 😈'][i]}</div>
+        <div class="stage-progress">${completed?'✅ Abgeschlossen':unlocked?`${fightsDone}/10 Kämpfe`:'🔒 Gesperrt'}</div>
+      </div>
+      ${!unlocked?'<div class="stage-lock">🔒</div>':''}
+      ${completed?'<div style="font-size:18px">✅</div>':''}
+    `;
+
+    if(unlocked) {
+      card.onclick=()=>{
+        bstate.stageIdx=i;
+        bstate.fightIdx=loadBattleData()[`stage${stage.id}Fights`]||0;
+        bstate.potions=bstate.potions||[];
+        initFight();
+      };
+    }
+    screen.appendChild(card);
+  });
+
+  // Zurück
+  const back=document.createElement('button');
+  back.style.cssText='width:100%;padding:10px;background:transparent;border:1px solid rgba(160,128,255,0.2);border-radius:8px;color:#665588;font-family:inherit;font-size:9px;letter-spacing:1px;margin-top:4px';
+  back.textContent='← ZURÜCK ZU NEO SUDOKU';
+  back.onclick=()=>window.location.href='index.html';
+  screen.appendChild(back);
+
+  app.appendChild(screen);
+}
+
+// ── INTRO ────────────────────────────────────────────────────────
+function renderIntro() {
+  const m=MONSTERS[bstate.monster.id];
+  const stage=STAGES[bstate.stageIdx];
+  const fightNum=bstate.fightIdx+1;
+  const isBoss=bstate.monster.isFinalBoss;
+
+  const screen=document.createElement('div');
+  screen.className='screen';
+  screen.style.cssText='align-items:center;justify-content:center;min-height:100vh;padding-top:40px';
+
+  // Monster Canvas
+  const canvas=mkCanvas(m.canvasW, m.canvasH);
+  canvas.style.cssText='display:block;width:'+(m.canvasW*S*2.5)+'px;height:'+(m.canvasH*S*2.5)+'px;image-rendering:pixelated';
+  canvas.width=m.canvasW*S; canvas.height=m.canvasH*S;
+
+  let t=0;
+  const ctx=canvas.getContext('2d');
+  const anim=()=>{ m.draw(ctx,t++,m.colors); requestAnimationFrame(anim); };
+  anim();
+
+  const intro=document.createElement('div');
+  intro.className='intro-panel';
+  intro.style.cssText=`border-color:${m.color}40;background:radial-gradient(ellipse at 50% 0%,${m.color}08,#0e0c1a 70%);max-width:320px;width:100%`;
+
+  const stageLabel=document.createElement('div');
+  stageLabel.style.cssText=`font-size:8px;color:${stage.color};letter-spacing:2px`;
+  stageLabel.textContent=`${stage.emoji} ${stage.name.toUpperCase()} — KAMPF ${fightNum}/10`;
+
+  const nameDiv=document.createElement('div');
+  nameDiv.style.cssText=`font-size:${isBoss?'16px':'14px'};font-weight:900;color:${m.color};text-shadow:0 0 12px ${m.color};letter-spacing:2px`;
+  nameDiv.textContent=(isBoss?'👑 BOSS: ':'')+m.name;
+
+  const quote=document.createElement('div');
+  quote.className='intro-quote';
+  quote.textContent=`"${getRandomQuote(m,'intro')||'...'}"`;
+
+  const statsDiv=document.createElement('div');
+  statsDiv.style.cssText='display:flex;gap:16px;font-size:8px;color:#665588';
+  statsDiv.innerHTML=`
+    <span>❤️ HP: ${bstate.monsterMaxHp}</span>
+    <span>🛡️ Res: ${Math.round((1-bstate.monster.resistance)*100)}%</span>
+    ${bstate.monster.shield?`<span>⚔️ Schild: ${bstate.monster.shield}</span>`:''}
+  `;
+
+  const abilityDiv=document.createElement('div');
+  abilityDiv.style.cssText=`font-size:8px;color:${m.color};padding:6px 10px;border-radius:6px;background:${m.color}10;border:1px solid ${m.color}30`;
+  abilityDiv.textContent=m.abilityText||'🌱 Keine Fähigkeit';
+
+  const fightBtn=document.createElement('button');
+  fightBtn.style.cssText=`width:100%;padding:12px;background:linear-gradient(135deg,${m.color}cc,${m.color});color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:2px;box-shadow:0 0 16px ${m.color}80`;
+  fightBtn.textContent='⚔ KAMPF BEGINNEN';
+  fightBtn.onclick=()=>{ bstate.screen='battle'; render(); };
+
+  intro.appendChild(stageLabel);
+  intro.appendChild(canvas);
+  intro.appendChild(nameDiv);
+  intro.appendChild(quote);
+  intro.appendChild(statsDiv);
+  intro.appendChild(abilityDiv);
+  intro.appendChild(fightBtn);
+  screen.appendChild(intro);
+  app.appendChild(screen);
+}
+
+// ── BATTLE ───────────────────────────────────────────────────────
+function renderBattle() {
+  const m=MONSTERS[bstate.monster.id];
+  const stage=STAGES[bstate.stageIdx];
+  const CELL=bstate.cellSize;
+  const PAD=16;
+  const boardW=9*CELL+PAD;
+
+  const wrap=document.createElement('div');
+  wrap.className='battle-wrap';
+
+  // Header
+  const header=document.createElement('div');
+  header.className='battle-header';
+  const backBtn=document.createElement('button');
+  backBtn.className='back-btn'; backBtn.textContent='← Menü';
+  backBtn.onclick=()=>{ bstate.screen='menu'; render(); };
+  const counter=document.createElement('div');
+  counter.className='fight-counter';
+  counter.textContent=`KAMPF ${bstate.fightIdx}/10`;
+  const badge=document.createElement('div');
+  badge.className='stage-badge';
+  badge.style.cssText=`color:${stage.color};border:1px solid ${stage.color}50;background:${stage.color}10`;
+  badge.textContent=stage.emoji+' '+stage.name;
+  header.appendChild(backBtn); header.appendChild(counter); header.appendChild(badge);
+  wrap.appendChild(header);
+
+  // Boss Panel
+  const bossPanel=document.createElement('div');
+  bossPanel.id='boss-panel';
+  bossPanel.className='boss-panel';
+  bossPanel.style.cssText=`border-color:${m.color}40;background:radial-gradient(ellipse at 50% 0%,${m.color}06,#0e0c1a 80%)`;
+
+  const bossName=document.createElement('div');
+  bossName.className='boss-name';
+  bossName.style.cssText=`color:${m.color};text-shadow:0 0 10px ${m.color}`;
+  bossName.textContent=(bstate.monster.isFinalBoss?'👑 ':'')+m.name;
+
+  // Monster Canvas
+  const canvasWrap=document.createElement('div');
+  canvasWrap.id='boss-canvas-wrap';
+  canvasWrap.className='boss-canvas-wrap';
+  canvasWrap.style.position='relative';
+  const canvas=mkCanvas(m.canvasW, m.canvasH);
+  const scale=2.5;
+  canvas.style.cssText=`display:block;width:${m.canvasW*S*scale}px;height:${m.canvasH*S*scale}px;image-rendering:pixelated`;
+  canvasWrap.appendChild(canvas);
+
+  let t=bstate.monsterAnimT;
+  const ctx=canvas.getContext('2d');
+  const anim=()=>{
+    m.draw(ctx,t++,m.colors);
+    bstate.monsterAnimT=t;
+    bstate.monsterAnimId=requestAnimationFrame(anim);
+  };
+  if(bstate.monsterAnimId) cancelAnimationFrame(bstate.monsterAnimId);
+  anim();
+
+  // HP Bar
+  const hpWrap=document.createElement('div');
+  hpWrap.className='boss-hp-wrap';
+  hpWrap.style.width='100%';
+  const hpPct=Math.max(0,bstate.monsterHp/bstate.monsterMaxHp*100);
+  hpWrap.innerHTML=`
+    <div class="hp-label"><span>❤️ ${m.name}</span><span id="boss-hp-text">${bstate.monsterHp} / ${bstate.monsterMaxHp}</span></div>
+    <div class="hp-bar-outer"><div class="hp-bar-inner" id="boss-hp-bar" style="width:${hpPct}%;background:linear-gradient(90deg,#e05252,#f07070)"></div></div>
+  `;
+
+  bossPanel.appendChild(bossName);
+  bossPanel.appendChild(canvasWrap);
+  bossPanel.appendChild(hpWrap);
+  wrap.appendChild(bossPanel);
+
+  // Aktive Effekte anzeigen
+  const activeEffects=[];
+  if(bstate.frozenCells.length) activeEffects.push('❄️ Zellen eingefroren');
+  if(bstate.cursedCells.length) activeEffects.push('💀 Zellen verflucht');
+  if(bstate.hiddenSumCages.length) activeEffects.push('🍄 Summen versteckt');
+  if(bstate.fakeSumData) activeEffects.push('💻 Falsche Summen');
+  if(bstate.shuffledNumpad) activeEffects.push('💠 Numpad durchgemischt');
+  if(bstate.allSameColor) activeEffects.push('🧙 Alle Farben gleich');
+  if(bstate.hintsBlocked>0) activeEffects.push(`🧟 Tipps gesperrt (${bstate.hintsBlocked})`);
+  if(bstate.fogBox!==undefined&&bstate.fogBox!==null) activeEffects.push('🦇 Nebel aktiv');
+
+  if(activeEffects.length>0) {
+    const eb=document.createElement('div');
+    eb.className='effect-banner';
+    eb.style.cssText=`color:${m.color};border-color:${m.color}40;background:${m.color}08;font-size:7.5px`;
+    eb.textContent=activeEffects.join(' · ');
+    wrap.appendChild(eb);
+  }
+
+  // Player Panel
+  const pp=document.createElement('div');
+  pp.className='player-panel'; pp.id='player-panel';
+  const pHpPct=Math.max(0,bstate.playerHp/bstate.playerMaxHp*100);
+  const bd=loadBattleData();
+  const lvl=calcBattleLevel(bd.totalXp);
+  pp.innerHTML=`
+    <div class="player-avatar">🧩</div>
+    <div class="player-stats">
+      <div class="player-stat-row">
+        <span class="player-stat-label">❤️</span>
+        <div class="player-bar-outer"><div class="player-bar-inner" id="player-hp-bar" style="width:${pHpPct}%;background:linear-gradient(90deg,#52e07c,#70f090)"></div></div>
+        <span class="player-stat-val" id="player-hp-text">${bstate.playerHp}/${bstate.playerMaxHp}</span>
+      </div>
+      <div style="font-size:7px;color:#445566;display:flex;justify-content:space-between">
+        <span>LV ${lvl.level} ${getBattleTitle(lvl.level)}</span>
+        <span>💡 ${bstate.hintsLeft} Tipps${bstate.hintsBlocked>0?' 🔒':''}</span>
+      </div>
+    </div>
+  `;
+  wrap.appendChild(pp);
+
+  // Tränke
+  if(bstate.potions.length>0) {
+    const pb=document.createElement('div');
+    pb.className='potion-bar';
+    const counts={};
+    bstate.potions.forEach(p=>counts[p]=(counts[p]||0)+1);
+    Object.entries(counts).forEach(([type,count])=>{
+      const icons={small:'🧪',large:'🍶',crystal:'💎'};
+      const b=document.createElement('button');
+      b.className='potion-btn'; b.style.borderColor='rgba(160,128,255,0.3)';
+      b.innerHTML=`${icons[type]} ×${count}`;
+      b.onclick=()=>usePotion(type);
+      pb.appendChild(b);
+    });
+    wrap.appendChild(pb);
+  }
+
+  // Board
+  const boardWrap=document.createElement('div');
+  boardWrap.className='board-wrap';
+  boardWrap.style.cssText=`width:${boardW}px;height:${boardW}px;flex-shrink:0`;
+
+  const grid=document.createElement('div');
+  grid.className='board-grid';
+  grid.style.cssText=`grid-template-columns:repeat(9,${CELL}px);width:${9*CELL}px;top:${PAD/2}px;left:${PAD/2}px`;
+
+  const [selR,selC]=bstate.selected||[-1,-1];
+  const activeCageId=selR>=0?bstate.cageMap[`${selR},${selC}`]:null;
+
+  for(let r=0;r<9;r++) for(let c=0;c<9;c++) {
+    const ci=bstate.cageMap[`${r},${c}`];
+    const cage=bstate.cages[ci];
+    const val=bstate.userGrid[r][c];
+    const isFrozen=bstate.frozenCells.some(([fr,fc])=>fr===r&&fc===c);
+    const isCursed=bstate.cursedCells.some(([cr,cc])=>cr===r&&cc===c);
+    const isFog=bstate.fogBox!==null&&bstate.fogBox!==undefined&&
+      Math.floor(r/3)*3+Math.floor(c/3)===bstate.fogBox;
+
+    const cell=document.createElement('div');
+    cell.className='cell';
+    cell.dataset.r=r; cell.dataset.c=c;
+    cell.style.width=CELL+'px'; cell.style.height=CELL+'px';
+
+    if(isFrozen) { cell.classList.add('frozen'); }
+    else if(isCursed) { cell.classList.add('cursed'); }
+    else if(r===selR&&c===selC) cell.classList.add('selected');
+    else if(val>0&&val===bstate.userGrid[selR]?.[selC]) cell.classList.add('same-num');
+    else if(selR>=0&&(r===selR||c===selC||(Math.floor(r/3)===Math.floor(selR/3)&&Math.floor(c/3)===Math.floor(selC/3)))) cell.classList.add('same-group');
+
+    // Käfig-Summe
+    const tl=cageTopLeft(ci,bstate.cages);
+    if(tl[0]===r&&tl[1]===c) {
+      const hidden=bstate.hiddenSumCages.includes(ci);
+      const fakeSum=bstate.fakeSumData?.[ci];
+      const displaySum=hidden?'?':fakeSum!==undefined?fakeSum:cage.sum;
+      const cageColor=bstate.allSameColor?'#a080ff':cage.color;
+      const s=document.createElement('span');
+      s.style.cssText=`position:absolute;top:1px;left:2px;font-size:${Math.max(7,CELL*0.2)}px;font-weight:900;color:${hidden?'#665588':cageColor};font-family:monospace;line-height:1;z-index:5;text-shadow:0 0 5px ${cageColor}60`;
+      s.textContent=displaySum+(bstate.completedCages.has(ci)?' ✓':'');
+      cell.appendChild(s);
+    }
+
+    // Notizen
+    if(val===0&&bstate.notes[r][c].size>0&&!isFog) {
+      const ng=document.createElement('div');
+      ng.style.cssText=`display:grid;grid-template-columns:repeat(3,1fr);width:92%;height:92%;position:absolute;padding:1px`;
+      for(let n=1;n<=9;n++){
+        const ns=document.createElement('span');
+        ns.style.cssText=`font-size:${Math.max(5,CELL*0.18)}px;text-align:center;line-height:${Math.floor(CELL/3.2)}px;color:${bstate.notes[r][c].has(n)?'#a080ff':'transparent'};font-family:monospace`;
+        ns.textContent=n; ng.appendChild(ns);
+      }
+      cell.appendChild(ng);
+    }
+
+    // Zahl
+    if(isFog&&val===0) {
+      const fs=document.createElement('span');
+      fs.style.cssText='font-size:14px;opacity:0.3';
+      fs.textContent='~';
+      cell.appendChild(fs);
+    } else if(val>0) {
+      const isWrong=bstate.userGrid[r][c]!==bstate.solution[r][c];
+      const cageColor=bstate.allSameColor?'#a080ff':cage.color;
+      const numColor=isWrong?'#ff4466':bstate.completedCages.has(ci)?'#80ff80':cageColor;
+      const vs=document.createElement('span');
+      vs.style.cssText=`font-size:${Math.max(12,CELL*0.42)}px;font-weight:700;color:${numColor};text-shadow:0 0 8px ${numColor},0 0 16px ${numColor}80;transition:color 0.15s`;
+      vs.textContent=val;
+      cell.appendChild(vs);
+    }
+
+    if(!isFrozen) cell.onclick=()=>{ bstate.selected=[r,c]; renderGame(); };
+    grid.appendChild(cell);
+  }
+  boardWrap.appendChild(grid);
+
+  // SVG Käfig-Linien
+  const svgNS='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(svgNS,'svg');
+  svg.setAttribute('width',boardW); svg.setAttribute('height',boardW);
+  svg.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:4';
+  const defs=document.createElementNS(svgNS,'defs');
+  defs.innerHTML=`<filter id="ng" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+  svg.appendChild(defs);
+
+  function svgLine(x1,y1,x2,y2,stroke,sw,dash){
+    const l=document.createElementNS(svgNS,'line');
+    l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke',stroke);l.setAttribute('stroke-width',sw);
+    if(dash)l.setAttribute('stroke-dasharray',dash);
+    l.setAttribute('stroke-linecap','round'); return l;
+  }
+
+  // Dünne Linien
+  for(let i=1;i<9;i++){
+    if(i%3===0)continue;
+    svg.appendChild(svgLine(PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,i*CELL+PAD/2,'rgba(30,26,48,0.8)',0.8,null));
+    svg.appendChild(svgLine(i*CELL+PAD/2,PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,'rgba(30,26,48,0.8)',0.8,null));
+  }
+
+  // Käfig-Linien
+  const cg=document.createElementNS(svgNS,'g');
+  cg.setAttribute('filter','url(#ng)');
+  bstate.cages.forEach((cage,ci)=>{
+    const done=bstate.completedCages.has(ci);
+    const active=ci===activeCageId;
+    const sw=active?3.5:2.5;
+    const col=done?'#52b788':bstate.allSameColor?'#a080ff':cage.color;
+    const dash=done?null:'5,3';
+    cage.cells.forEach(([r,c])=>{
+      const id=bstate.cageMap[`${r},${c}`];
+      const x=c*CELL+PAD/2,y=r*CELL+PAD/2,gp=2;
+      if(bstate.cageMap[`${r-1},${c}`]!==id) cg.appendChild(svgLine(x+gp,y,x+CELL-gp,y,col,sw,dash));
+      if(bstate.cageMap[`${r+1},${c}`]!==id) cg.appendChild(svgLine(x+gp,y+CELL,x+CELL-gp,y+CELL,col,sw,dash));
+      if(bstate.cageMap[`${r},${c-1}`]!==id) cg.appendChild(svgLine(x,y+gp,x,y+CELL-gp,col,sw,dash));
+      if(bstate.cageMap[`${r},${c+1}`]!==id) cg.appendChild(svgLine(x+CELL,y+gp,x+CELL,y+CELL-gp,col,sw,dash));
+    });
+  });
+  svg.appendChild(cg);
+
+  // Box-Linien
+  [3,6].forEach(i=>{
+    svg.appendChild(svgLine(PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,i*CELL+PAD/2,'rgba(130,110,220,0.5)',1.8,null));
+    svg.appendChild(svgLine(i*CELL+PAD/2,PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,'rgba(130,110,220,0.5)',1.8,null));
+  });
+  const outerRect=document.createElementNS(svgNS,'rect');
+  outerRect.setAttribute('x',PAD/2);outerRect.setAttribute('y',PAD/2);
+  outerRect.setAttribute('width',9*CELL);outerRect.setAttribute('height',9*CELL);
+  outerRect.setAttribute('fill','none');outerRect.setAttribute('stroke',stage.color);outerRect.setAttribute('stroke-width','2.5');
+  svg.appendChild(outerRect);
+  boardWrap.appendChild(svg);
+  wrap.appendChild(boardWrap);
+
+  // Numpad
+  const numpad=document.createElement('div');
+  numpad.className='numpad';
+  numpad.style.cssText=`width:${boardW}px;max-width:97vw`;
+  const neonColors=['#ff6b6b','#ffa94d','#ffe066','#69db7c','#4ecdc4','#74c0fc','#da77f2','#ff9ff3','#a9e34b'];
+  const numOrder=bstate.shuffledNumpad||[1,2,3,4,5,6,7,8,9];
+  numOrder.forEach((n,displayIdx)=>{
+    const nc=neonColors[displayIdx];
+    const b=document.createElement('button');
+    b.className='num-btn';
+    b.style.cssText=`height:36px;background:${nc}10;border-color:${nc}50;color:${nc};text-shadow:0 0 6px ${nc}`;
+    const counts={1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
+    bstate.userGrid.forEach(row=>row.forEach(v=>{if(v>0)counts[v]++;}));
+    b.style.opacity=counts[n]>=9?'0.2':'1';
+    b.innerHTML=`<span style="font-size:15px;line-height:1;font-weight:700">${displayIdx+1}</span><span style="font-size:6px;color:${nc}99">${9-counts[n]}</span>`;
+    b.onclick=()=>inputNum(displayIdx+1);
+    numpad.appendChild(b);
+  });
+  wrap.appendChild(numpad);
+
+  // Action Buttons
+  const actions=document.createElement('div');
+  actions.className='action-btns';
+  actions.style.cssText=`width:${boardW}px;max-width:97vw`;
+  const hintBlocked=bstate.hintsBlocked>0;
+  [
+    {icon:'✏️',label:'Notiz',active:bstate.noteMode,color:'#a080ff',disabled:false,fn:()=>{bstate.noteMode=!bstate.noteMode;renderGame();}},
+    {icon:'↩',label:'Undo',active:false,color:'#74c0fc',disabled:!bstate.history.length,fn:undoAction},
+    {icon:'💡',label:hintBlocked?'🔒':'('+bstate.hintsLeft+')',active:false,color:'#ffe066',disabled:!bstate.hintsLeft||!bstate.selected||hintBlocked,fn:giveHint},
+  ].forEach(({icon,label,active,color,disabled,fn})=>{
+    const b=document.createElement('button');
+    b.className='action-btn';
+    b.style.cssText=`height:52px;background:${active?color+'22':color+'08'};border-color:${active?color:color+'44'};color:${color};text-shadow:0 0 6px ${color};box-shadow:${active?`0 0 10px ${color}40`:'none'};opacity:${disabled?'0.25':'1'}`;
+    b.innerHTML=`<span>${icon}</span><span>${label}</span>`;
+    b.onclick=disabled?null:fn;
+    actions.appendChild(b);
+  });
+  wrap.appendChild(actions);
+
+  // Battle Log
+  const log=document.createElement('div');
+  log.className='battle-log'; log.id='battle-log';
+  log.style.cssText=`width:${boardW}px;max-width:97vw`;
+  log.innerHTML=bstate.logLines.map(l=>`<div class="log-line ${l.type?'log-'+l.type:''}">${l.text}</div>`).join('');
+  wrap.appendChild(log);
+
+  app.appendChild(wrap);
+}
+
+function renderGame() {
+  if(bstate.screen==='battle') {
+    const wrap=document.querySelector('.battle-wrap');
+    if(wrap) { app.innerHTML=''; renderBattle(); }
+  }
+}
+
+// ── REWARD ───────────────────────────────────────────────────────
+function renderReward() {
+  const m=MONSTERS[bstate.monster.id];
+  const xp=bstate.lastXpGain||50;
+  const lvlResult=bstate.lastLevelResult;
+
+  const overlay=document.createElement('div');
+  overlay.className='overlay';
+  overlay.style.background='rgba(8,6,16,0.95)';
+
+  const card=document.createElement('div');
+  card.className='reward-card';
+  card.style.cssText=`border-color:${m.color}40`;
+
+  card.innerHTML=`
+    <div style="font-size:24px">⚔️</div>
+    <div style="font-size:13px;font-weight:900;color:${m.color};text-shadow:0 0 10px ${m.color}">SIEG!</div>
+    <div style="font-size:9px;color:#665588">${m.name} besiegt!</div>
+    <div style="font-size:11px;color:#ffd700;text-shadow:0 0 8px #ffd700">+${xp} XP</div>
+    ${lvlResult?.levelUp?`<div class="levelup-badge">⬆ LEVEL UP! LV ${lvlResult.newLevel}</div>`:''}
+    <div style="font-size:9px;color:#665588;margin-top:4px">Dein HP-Stand: ${bstate.playerHp}/${bstate.playerMaxHp}</div>
+  `;
+
+  // Tränke anbieten (zufällig)
+  if(Math.random()>0.4) {
+    const potionTypes=['small','small','large','crystal'];
+    const got=potionTypes[Math.floor(Math.random()*potionTypes.length)];
+    const icons={small:'🧪 Kleiner Heiltrank',large:'🍶 Großer Heiltrank',crystal:'💎 Schutzkristall'};
+    bstate.potions.push(got);
+    const pd=document.createElement('div');
+    pd.style.cssText='font-size:9px;color:#52e07c;padding:6px 10px;border-radius:6px;background:rgba(82,224,124,0.1);border:1px solid rgba(82,224,124,0.3)';
+    pd.textContent='🎁 Erhalten: '+icons[got];
+    card.appendChild(pd);
+  }
+
+  const nextBtn=document.createElement('button');
+  nextBtn.className='overlay-btn';
+  nextBtn.style.cssText=`border-color:${m.color};color:${m.color};background:${m.color}15`;
+  nextBtn.textContent='▶ NÄCHSTER KAMPF';
+  nextBtn.onclick=()=>initFight();
+  card.appendChild(nextBtn);
+
+  overlay.appendChild(card);
+  app.appendChild(overlay);
+}
+
+// ── STAGE CLEAR ──────────────────────────────────────────────────
+function renderStageClear() {
+  const stage=STAGES[bstate.stageIdx];
+  const reward=stage.reward;
+
+  // Stufe als abgeschlossen markieren
+  const bd=loadBattleData();
+  if(!bd.completedStages.includes(stage.id)) bd.completedStages.push(stage.id);
+  if(bstate.stageIdx+1<STAGES.length && !bd.unlockedStages.includes(stage.id+1)) {
+    bd.unlockedStages.push(stage.id+1);
+  }
+  bd[`stage${stage.id}Fights`]=0;
+  saveBattleData(bd);
+
+  // Belohnung
+  bstate.potions.push(reward.item==='🧪 Kleiner Heiltrank'?'small':reward.item==='🍶 Großer Heiltrank'?'large':'crystal');
+  bstate.playerHp=Math.min(bstate.playerMaxHp, bstate.playerHp+reward.hp);
+  const xpResult=addBattleXP(reward.xp);
+
+  const overlay=document.createElement('div');
+  overlay.className='overlay';
+  overlay.style.background='rgba(8,6,16,0.97)';
+
+  const card=document.createElement('div');
+  card.className='reward-card';
+  card.style.cssText=`border-color:${stage.color}60;max-width:340px`;
+
+  card.innerHTML=`
+    <div style="font-size:40px">${stage.emoji}</div>
+    <div style="font-size:16px;font-weight:900;color:${stage.color};text-shadow:0 0 16px ${stage.color}">STUFE ABGESCHLOSSEN!</div>
+    <div style="font-size:10px;color:#665588">${stage.name}</div>
+    <div style="display:flex;flex-direction:column;gap:6px;width:100%;text-align:left;background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;border:1px solid rgba(255,255,255,0.06)">
+      <div style="font-size:9px;color:#52e07c">❤️ +${reward.hp} HP wiederhergestellt</div>
+      <div style="font-size:9px;color:#ffd700">⭐ +${reward.xp} Battle XP</div>
+      <div style="font-size:9px;color:#a080ff">🎁 ${reward.item}</div>
+      ${xpResult.levelUp?`<div style="font-size:9px;color:#ffd700">⬆ LEVEL UP! LV ${xpResult.newLevel} — ${getBattleTitle(xpResult.newLevel)}</div>`:''}
+    </div>
+    ${bstate.stageIdx+1<STAGES.length?`<div style="font-size:9px;color:#665588">🔓 Nächste Stufe freigeschaltet: ${STAGES[bstate.stageIdx+1].emoji} ${STAGES[bstate.stageIdx+1].name}</div>`:''}
+  `;
+
+  const nextBtn=document.createElement('button');
+  nextBtn.className='overlay-btn';
+  nextBtn.style.cssText=`border-color:${stage.color};color:${stage.color};background:${stage.color}15`;
+  nextBtn.textContent=bstate.stageIdx+1<STAGES.length?'▶ WEITER':'🏆 SIEG!';
+  nextBtn.onclick=()=>{
+    if(bstate.stageIdx+1<STAGES.length) {
+      bstate.stageIdx++;
+      bstate.fightIdx=0;
+      bstate.screen='menu';
+      render();
+    } else {
+      bstate.screen='victory';
+      render();
+    }
+  };
+  card.appendChild(nextBtn);
+
+  const menuBtn=document.createElement('button');
+  menuBtn.style.cssText='font-size:9px;color:#445566;background:transparent;border:none;font-family:inherit;padding:4px;cursor:pointer';
+  menuBtn.textContent='← Zurück zum Battle-Menü';
+  menuBtn.onclick=()=>{ bstate.screen='menu'; render(); };
+  card.appendChild(menuBtn);
+
+  overlay.appendChild(card);
+  app.appendChild(overlay);
+}
+
+// ── GAME OVER ────────────────────────────────────────────────────
+function renderGameOver() {
+  const m=MONSTERS[bstate.monster.id];
+  const overlay=document.createElement('div');
+  overlay.className='overlay';
+  overlay.style.background='rgba(14,6,6,0.97)';
+
+  overlay.innerHTML=`
+    <div class="overlay-title" style="color:#ff4466">💀 NIEDERLAGE</div>
+    <div class="overlay-sub">${m.name} hat dich besiegt...</div>
+    <div style="font-size:9px;color:#445566">Du bist in Kampf ${bstate.fightIdx}/10 gefallen</div>
+  `;
+
+  const retryBtn=document.createElement('button');
+  retryBtn.className='overlay-btn';
+  retryBtn.style.cssText='border-color:#ff4466;color:#ff4466;background:rgba(255,68,102,0.1)';
+  retryBtn.textContent='🔄 NOCHMAL VERSUCHEN';
+  retryBtn.onclick=()=>{
+    bstate.playerHp=bstate.playerMaxHp;
+    bstate.fightIdx=Math.max(0,bstate.fightIdx-1);
+    initFight();
+  };
+
+  const menuBtn=document.createElement('button');
+  menuBtn.className='overlay-btn';
+  menuBtn.style.cssText='border-color:#665588;color:#665588;background:transparent';
+  menuBtn.textContent='← ZURÜCK ZUM MENÜ';
+  menuBtn.onclick=()=>{ bstate.screen='menu'; render(); };
+
+  overlay.appendChild(retryBtn);
+  overlay.appendChild(menuBtn);
+  app.appendChild(overlay);
+}
+
+// ── VICTORY ──────────────────────────────────────────────────────
+function renderVictory() {
+  const overlay=document.createElement('div');
+  overlay.className='overlay';
+  overlay.style.background='radial-gradient(ellipse at 50% 30%,#1a0030,#080610)';
+
+  overlay.innerHTML=`
+    <div style="font-size:48px">👑</div>
+    <div class="overlay-title" style="color:#ff40ff;font-size:18px">VOID BEZWUNGEN!</div>
+    <div style="font-size:10px;color:#665588;text-align:center;line-height:2">Du hast alle 4 Stufen bezwungen!<br>Du bist ein wahrer Void-Bezwinger!</div>
+    <div class="levelup-badge" style="font-size:12px">🏆 VOID-BEZWINGER 😈</div>
+  `;
+
+  const btn=document.createElement('button');
+  btn.className='overlay-btn';
+  btn.style.cssText='border-color:#ff40ff;color:#ff40ff;background:rgba(255,64,255,0.1);font-size:11px';
+  btn.textContent='← ZURÜCK ZUM MENÜ';
+  btn.onclick=()=>{ bstate.screen='menu'; render(); };
+  overlay.appendChild(btn);
+  app.appendChild(overlay);
+
+  // Konfetti!
+  for(let i=0;i<5;i++) {
+    setTimeout(()=>{
+      spawnParticles(Math.random()*window.innerWidth, Math.random()*200, ['#ff40ff','#a080ff','#00ffcc','#ffd700'][Math.floor(Math.random()*4)], 20);
+    }, i*400);
+  }
+}
+
+// ── START ────────────────────────────────────────────────────────
+// Dynamische Zellgröße
+const vw=Math.min(window.innerWidth, 420);
+bstate.cellSize=Math.floor((vw-32)/9);
+
+render();
+</script>
+</body>
+</html>

@@ -4,20 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Neo Sudoku</title>
-<link rel="manifest" href="manifest.json">
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log("Service Worker bereit!"))
-        .catch(err => console.log("Fehler beim Laden:", err));
-    });
-  }
-</script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { width: 100%; height: 100%; overflow: hidden; font-family: Georgia, 'Times New Roman', serif; }
-  #app { position: fixed; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  body.neon-theme { font-family: 'Orbitron', sans-serif; }
+  #app { position: fixed; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow-y:auto; }
   button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   button:active { opacity: 0.75; }
 
@@ -42,6 +34,7 @@
     max-width: 360px;
     max-height: 90vh;
     overflow-y: auto;
+    margin: auto;
   }
 
   #particle-canvas {
@@ -81,14 +74,11 @@
 <canvas id="particle-canvas"></canvas>
 <div id="app"></div>
 
+<script src="sudoku-engine.js"></script>
 <script>
-// ── KONSTANTEN ─────────────────────────────────────────────────────
-const CAGE_COLORS = [
-  "#ff6b6b","#ffa94d","#26d0a0","#5ba4cf","#b47ae0",
-  "#ffe066","#4ecdc4","#ff8c42","#74c0fc","#e899a8",
-  "#69db7c","#da77f2","#38d9d9","#ffa8a8","#8ce99a",
-  "#ff9ff3","#54a0ff","#ff6348","#1dd1a1","#ffeaa7",
-];
+// ── KONSTANTEN & ENGINE ────────────────────────────────────────────
+// (ausgelagert in sudoku-engine.js)
+
 
 const THEMES = {
   dunkel: {
@@ -99,6 +89,7 @@ const THEMES = {
     accent:"#e63946", accentSoft:"rgba(230,57,70,0.15)",
     noteColor:"#9b9bf0", card:"#13131f", cardBorder:"rgba(255,255,255,0.1)",
     timerColor:"#a0c4ff", btnBg:"#1a1a2e", btnBorder:"#2a2a3e", btnText:"#aaaacc",
+    glowColor:"#a0c4ff", glow:true,
   },
   hell: {
     label:"☀️ Hell", bg:"#e8eeff", bgGrad:"linear-gradient(135deg,#e8eeff 0%,#f0e8ff 50%,#e8f4ff 100%)",
@@ -108,6 +99,7 @@ const THEMES = {
     accent:"#e63946", accentSoft:"rgba(230,57,70,0.1)",
     noteColor:"#4444cc", card:"#ffffff", cardBorder:"rgba(80,100,200,0.2)",
     timerColor:"#2244aa", btnBg:"#eef0ff", btnBorder:"#c0c8e0", btnText:"#445",
+    glowColor:"#5577ff", glow:true,
   },
   sepia: {
     label:"📜 Sepia", bg:"#1a1005", bgGrad:"linear-gradient(135deg,#1a1005 0%,#221508 50%,#1a1005 100%)",
@@ -117,6 +109,7 @@ const THEMES = {
     accent:"#d4820a", accentSoft:"rgba(212,130,10,0.18)",
     noteColor:"#c0a060", card:"#1a1005", cardBorder:"rgba(200,160,80,0.25)",
     timerColor:"#d4b070", btnBg:"#1e1408", btnBorder:"#3a2a14", btnText:"#c8a060",
+    glowColor:"#d4a030", glow:true,
   },
   mint: {
     label:"🌿 Mint", bg:"#071a12", bgGrad:"linear-gradient(135deg,#071a12 0%,#0a2018 50%,#071510 100%)",
@@ -126,6 +119,17 @@ const THEMES = {
     accent:"#2a9d6f", accentSoft:"rgba(42,157,111,0.18)",
     noteColor:"#60d0a0", card:"#071a12", cardBorder:"rgba(80,200,140,0.2)",
     timerColor:"#60d0a0", btnBg:"#0e2018", btnBorder:"#1a3020", btnText:"#a0d8b8",
+    glowColor:"#52e07c", glow:true,
+  },
+  neon: {
+    label:"⚡ Neon", bg:"#080610", bgGrad:"radial-gradient(ellipse at 30% 20%, #1a1035 0%, #080610 60%, #0a0618 100%)",
+    cell:"#0e0c1a", cellSel:"#1a0e3a", cellSameNum:"#0e2a1a", cellSameGroup:"#110e20",
+    cellBorder:"#1e1a30", boxLine:"rgba(130,110,220,0.55)", outerLine:"#7060e0",
+    text:"#d0c8ff", textCorrect:"#80ffb0", textWrong:"#ff4466",
+    accent:"#7060e0", accentSoft:"rgba(112,96,224,0.18)",
+    noteColor:"#a080ff", card:"#0c0a18", cardBorder:"rgba(112,96,224,0.25)",
+    timerColor:"#a080ff", btnBg:"#110e20", btnBorder:"#2a2040", btnText:"#9080cc",
+    glowColor:"#a080ff", glow:true,
   },
 };
 
@@ -274,65 +278,6 @@ function importData(file, cb) {
   r.readAsText(file);
 }
 
-// ── SUDOKU-LOGIK ───────────────────────────────────────────────────
-function generateSolution() {
-  const g=Array.from({length:9},()=>Array(9).fill(0));
-  const ok=(r,c,n)=>{
-    for(let i=0;i<9;i++) if(g[r][i]===n||g[i][c]===n) return false;
-    const br=Math.floor(r/3)*3,bc=Math.floor(c/3)*3;
-    for(let i=0;i<3;i++) for(let j=0;j<3;j++) if(g[br+i][bc+j]===n) return false;
-    return true;
-  };
-  const solve=pos=>{
-    if(pos===81)return true;
-    const r=Math.floor(pos/9),c=pos%9;
-    for(const n of [1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-0.5))
-      if(ok(r,c,n)){g[r][c]=n;if(solve(pos+1))return true;g[r][c]=0;}
-    return false;
-  };
-  solve(0); return g;
-}
-
-function generateCages(sol, diff) {
-  const cfg={easy:{min:2,max:3},mittel:{min:2,max:4},schwer:{min:2,max:5},boshaft:{min:3,max:6}};
-  const {min,max}=cfg[diff];
-  const done=Array.from({length:9},()=>Array(9).fill(false));
-  const cages=[];
-  const cells=[];
-  for(let r=0;r<9;r++) for(let c=0;c<9;c++) cells.push([r,c]);
-  cells.sort(()=>Math.random()-0.5);
-  for(const [sr,sc] of cells){
-    if(done[sr][sc])continue;
-    const size=min+Math.floor(Math.random()*(max-min+1));
-    const cage=[[sr,sc]]; done[sr][sc]=true;
-    while(cage.length<size){
-      const [lr,lc]=cage[Math.floor(Math.random()*cage.length)];
-      const nb=[[lr-1,lc],[lr+1,lc],[lr,lc-1],[lr,lc+1]].filter(([r,c])=>r>=0&&r<9&&c>=0&&c<9&&!done[r][c]);
-      if(!nb.length)break;
-      const [nr,nc]=nb[Math.floor(Math.random()*nb.length)];
-      cage.push([nr,nc]); done[nr][nc]=true;
-    }
-    const sum=cage.reduce((s,[r,c])=>s+sol[r][c],0);
-    cages.push({cells:cage,sum,color:CAGE_COLORS[cages.length%CAGE_COLORS.length]});
-  }
-  return cages;
-}
-
-function buildCageMap(cages){
-  const m={};
-  cages.forEach((c,i)=>c.cells.forEach(([r,col])=>{m[`${r},${col}`]=i;}));
-  return m;
-}
-
-function cageTopLeft(cageIdx, cages){ return [...cages[cageIdx].cells].sort((a,b)=>a[0]-b[0]||a[1]-b[1])[0]; }
-
-function isCageDone(cage, grid){
-  const vals=cage.cells.map(([r,c])=>grid[r][c]);
-  if(vals.some(v=>v===0))return false;
-  if(new Set(vals).size!==vals.length)return false;
-  return vals.reduce((a,b)=>a+b,0)===cage.sum;
-}
-
 const fmt=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 
 // ── STATE ──────────────────────────────────────────────────────────
@@ -340,7 +285,7 @@ const cfg0=loadCfg()||{};
 let state = {
   screen: "menu",
   difficulty: "mittel",
-  themeName: cfg0.themeName||"dunkel",
+  themeName: cfg0.themeName||"neon",
   showTimer: cfg0.showTimer??true,
   showErrors: cfg0.showErrors??true,
   solution: null, cages: [], cageMap: {}, userGrid: null,
@@ -400,6 +345,7 @@ function renderTimerOnly(){
 function render(){ 
   app.innerHTML="";
   applyBg(app);
+  document.body.classList.add("neon-theme");
   if(state.screen==="menu") renderMenu();
   else if(state.screen==="game") renderGame();
   else if(state.screen==="won") renderWon();
@@ -415,15 +361,18 @@ function makeCard(){
 }
 
 function ghostBtn(label,onclick){
-  const b=el("button",{style:{background:"transparent",border:`1px solid ${T().btnBorder}`,color:T().btnText,padding:"5px 10px",borderRadius:"7px",fontSize:"12px"}});
+  const neon=T().glow; const gc=T().glowColor||"#a080ff";
+  const b=el("button",{style:{background:neon?`${gc}18`:"transparent",border:`1px solid ${neon?gc:T().btnBorder}`,color:neon?gc:T().btnText,padding:"5px 10px",borderRadius:"7px",fontSize:"12px",textShadow:neon?`0 0 8px ${gc}`:"none",boxShadow:neon?`0 0 8px ${gc}50`:"none"}});
   b.textContent=label; b.onclick=onclick; return b;
 }
 function primaryBtn(label,onclick){
-  const b=el("button",{style:{width:"100%",padding:"12px",marginBottom:"8px",background:T().accent,color:"#fff",border:"none",borderRadius:"12px",fontSize:"14px",fontWeight:"700"}});
+  const neon=T().glow; const gc=T().glowColor||"#a080ff";
+  const b=el("button",{style:{width:"100%",padding:"12px",marginBottom:"8px",background:neon?`linear-gradient(135deg,${gc}cc,${gc})`:T().accent,color:"#fff",border:neon?`1px solid ${gc}`:"none",borderRadius:"12px",fontSize:"14px",fontWeight:"700",boxShadow:neon?`0 0 16px ${gc}80`:"none",textShadow:neon?`0 0 8px #fff`:"none"}});
   b.textContent=label; b.onclick=onclick; return b;
 }
 function secondaryBtn(label,onclick){
-  const b=el("button",{style:{width:"100%",padding:"10px",marginBottom:"8px",background:"transparent",color:T().timerColor,border:`1px solid ${T().btnBorder}`,borderRadius:"12px",fontSize:"13px"}});
+  const neon=T().glow; const gc=T().glowColor||"#a080ff";
+  const b=el("button",{style:{width:"100%",padding:"10px",marginBottom:"8px",background:neon?`${gc}10`:"transparent",color:neon?gc:T().timerColor,border:`1px solid ${neon?`${gc}60`:T().btnBorder}`,borderRadius:"12px",fontSize:"13px",textShadow:neon?`0 0 8px ${gc}`:"none"}});
   b.textContent=label; b.onclick=onclick; return b;
 }
 function choiceBtn(label,active,onclick){
@@ -447,16 +396,18 @@ function renderMenu(){
   const xpData=loadXP();
   const lvl=calcLevel(xpData.totalXp);
   const pct=Math.round((lvl.currentXp/lvl.neededXp)*100);
+  const isNeon = T().glow;
+  const gc = T().glowColor||"#a080ff";
   titleDiv.innerHTML=`<div style="font-size:44px;margin-bottom:4px">🧩</div>
-    <h1 style="font-size:28px;font-weight:700;color:${T().text};margin:0 0 2px">Neo Sudoku</h1>
+    <h1 style="font-size:28px;font-weight:700;color:${isNeon?gc:T().text};margin:0 0 2px;${isNeon?`text-shadow:0 0 12px ${gc}, 0 0 24px ${gc}80`:""}"">Neo Sudoku</h1>
     ${total>0?`<div style="font-size:12px;color:${T().btnText};margin-bottom:4px">🏆 ${total} Rätsel gelöst</div>`:""}
-    <div style="width:40px;height:2px;background:${T().accent};margin:8px auto 12px;border-radius:2px"></div>
+    <div style="width:40px;height:2px;background:${isNeon?gc:T().accent};margin:8px auto 12px;border-radius:2px;${isNeon?`box-shadow:0 0 8px ${gc}`:""}"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;justify-content:center">
-      <span style="font-size:13px;font-weight:700;color:#ffd700">Level ${lvl.level}</span>
+      <span style="font-size:13px;font-weight:700;color:#ffd700;${isNeon?"text-shadow:0 0 8px #ffd700":""}">Level ${lvl.level}</span>
       <span style="font-size:11px;color:${T().btnText}">${getLevelTitle(lvl.level)}</span>
     </div>
     <div style="background:${T().cellBorder};border-radius:99px;height:8px;overflow:hidden;margin-bottom:3px;width:100%">
-      <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ffd700,#ffaa00);border-radius:99px;transition:width 0.6s ease"></div>
+      <div style="height:100%;width:${pct}%;background:${isNeon?`linear-gradient(90deg,${gc},${gc}cc)`:"linear-gradient(90deg,#ffd700,#ffaa00)"};border-radius:99px;transition:width 0.6s ease;${isNeon?`box-shadow:0 0 8px ${gc}`:""}"></div>
     </div>
     <div style="font-size:10px;color:${T().btnText};margin-bottom:14px">${lvl.currentXp} / ${lvl.neededXp} XP</div>`;
   card.appendChild(titleDiv);
@@ -472,6 +423,13 @@ function renderMenu(){
   card.appendChild(diffGrid);
   card.appendChild(primaryBtn("Neues Spiel",()=>startNewGame(state.difficulty)));
   if(loadGame()) card.appendChild(secondaryBtn("Weiterspielen",continueGame));
+
+  // Battle Modus Link
+  const gc=T().glowColor||'#a080ff';
+  const battleBtn=el("button",{style:{width:"100%",padding:"11px",marginBottom:"8px",background:`${gc}12`,color:gc,border:`1px solid ${gc}50`,borderRadius:"12px",fontSize:"13px",fontWeight:"700",textShadow:`0 0 8px ${gc}`,boxShadow:`0 0 10px ${gc}20`}});
+  battleBtn.textContent="⚔️ Battle Modus";
+  battleBtn.onclick=()=>window.location.href='battle.html';
+  card.appendChild(battleBtn);
 
   const row=el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}});
   row.appendChild(secondaryBtn("📊 Statistik",()=>{ state.screen="stats"; render(); }));
@@ -692,6 +650,22 @@ function renderGame(){
   svg.setAttribute("width",boardW); svg.setAttribute("height",boardW);
   Object.assign(svg.style,{position:"absolute",top:"0",left:"0",pointerEvents:"none",zIndex:"4"});
 
+  // Neon glow filter
+  const isNeon = T().glow;
+  if(isNeon){
+    const defs=document.createElementNS(svgNS,"defs");
+    defs.innerHTML=`
+      <filter id="neonGlow" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="2.5" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="neonGlowStrong" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="4" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>`;
+    svg.appendChild(defs);
+  }
+
   function svgLine(x1,y1,x2,y2,stroke,sw,dash){
     const l=document.createElementNS(svgNS,"line");
     l.setAttribute("x1",x1);l.setAttribute("y1",y1);l.setAttribute("x2",x2);l.setAttribute("y2",y2);
@@ -703,14 +677,16 @@ function renderGame(){
   // Dünne innere Linien
   for(let i=1;i<9;i++){
     if(i%3===0)continue;
-    svg.appendChild(svgLine(PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,i*CELL+PAD/2,T().cellBorder,0.8,null));
-    svg.appendChild(svgLine(i*CELL+PAD/2,PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,T().cellBorder,0.8,null));
+    svg.appendChild(svgLine(PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,i*CELL+PAD/2,T().cellBorder,0.8,null,null));
+    svg.appendChild(svgLine(i*CELL+PAD/2,PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,T().cellBorder,0.8,null,null));
   }
 
   const cageStroke=Math.max(2.5,CELL*0.06);
   const boxStroke=Math.max(1.5,CELL*0.032);
 
-  // Käfig-Ränder
+  // Käfig-Ränder — alle in einer Gruppe mit Glow
+  const cageGroup=document.createElementNS(svgNS,"g");
+  if(isNeon) cageGroup.setAttribute("filter","url(#neonGlow)");
   state.cages.forEach((cage,ci)=>{
     const isDone=state.completedCages.has(ci);
     const isActive=ci===activeCageId;
@@ -720,13 +696,13 @@ function renderGame(){
     cage.cells.forEach(([r,c])=>{
       const id=state.cageMap[`${r},${c}`];
       const x=c*CELL+PAD/2,y=r*CELL+PAD/2,gp=2;
-      if(state.cageMap[`${r-1},${c}`]!==id) svg.appendChild(svgLine(x+gp,y,x+CELL-gp,y,col,sw,dash));
-      if(state.cageMap[`${r+1},${c}`]!==id) svg.appendChild(svgLine(x+gp,y+CELL,x+CELL-gp,y+CELL,col,sw,dash));
-      if(state.cageMap[`${r},${c-1}`]!==id) svg.appendChild(svgLine(x,y+gp,x,y+CELL-gp,col,sw,dash));
-      if(state.cageMap[`${r},${c+1}`]!==id) svg.appendChild(svgLine(x+CELL,y+gp,x+CELL,y+CELL-gp,col,sw,dash));
+      if(state.cageMap[`${r-1},${c}`]!==id) cageGroup.appendChild(svgLine(x+gp,y,x+CELL-gp,y,col,sw,dash));
+      if(state.cageMap[`${r+1},${c}`]!==id) cageGroup.appendChild(svgLine(x+gp,y+CELL,x+CELL-gp,y+CELL,col,sw,dash));
+      if(state.cageMap[`${r},${c-1}`]!==id) cageGroup.appendChild(svgLine(x,y+gp,x,y+CELL-gp,col,sw,dash));
+      if(state.cageMap[`${r},${c+1}`]!==id) cageGroup.appendChild(svgLine(x+CELL,y+gp,x+CELL,y+CELL-gp,col,sw,dash));
     });
   });
-
+  svg.appendChild(cageGroup);
   // 3×3 Box-Linien
   [3,6].forEach(i=>{
     svg.appendChild(svgLine(PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,i*CELL+PAD/2,T().boxLine,boxStroke,null));
@@ -743,7 +719,7 @@ function renderGame(){
   // Zellen-Grid
   const grid=el("div",{style:{display:"grid",gridTemplateColumns:`repeat(9,${CELL}px)`,position:"absolute",top:`${PAD/2}px`,left:`${PAD/2}px`}});
 
-  const sumSz=Math.max(10,Math.floor(CELL*0.22));
+  const sumSz=Math.max(7,Math.floor(CELL*0.19));
   const valSz=Math.max(14,Math.floor(CELL*0.44));
   const noteSz=Math.max(6,Math.floor(CELL*0.19));
 
@@ -769,10 +745,12 @@ function renderGame(){
     const cell=el("div",{style:{width:`${CELL}px`,height:`${CELL}px`,background:bg,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxSizing:"border-box",transition:"background 0.08s",zIndex:"1",borderRight:`1px solid ${T().cellBorder}`,borderBottom:`1px solid ${T().cellBorder}`}});
     cell.onclick=()=>selectCell(r,c);
 
-    // Käfig-Summe (nur anzeigen wenn Zelle groß genug)
+    // Käfig-Summe
     const tl=cageTopLeft(cageIdx,state.cages);
-    if(tl[0]===r&&tl[1]===c&&CELL>=32){
-      const sum=el("span",{style:{position:"absolute",top:"1px",left:"2px",fontSize:`${isDoneCage?sumSz:cageIdx===activeCageId?sumSz*1.4:sumSz}px`,fontWeight:"900",color:isDoneCage?"#52b788":cage.color,fontFamily:"monospace",lineHeight:"1",zIndex:"5",textShadow:`0 0 5px ${T().bg}`}});
+    if(tl[0]===r&&tl[1]===c){
+      const sumColor=isDoneCage?"#52b788":cage.color;
+      const sumGlow=isNeon?`0 0 6px ${sumColor}, 0 0 12px ${sumColor}60`:`0 0 5px ${T().bg}`;
+      const sum=el("span",{style:{position:"absolute",top:"1px",left:"2px",fontSize:`${isDoneCage?sumSz:cageIdx===activeCageId?sumSz*1.2:sumSz}px`,fontWeight:"900",color:sumColor,fontFamily:"monospace",lineHeight:"1",zIndex:"5",textShadow:sumGlow}});
       sum.textContent=cage.sum+(isDoneCage?" ✓":""); cell.appendChild(sum);
     }
 
@@ -788,7 +766,9 @@ function renderGame(){
 
     // Zahl
     if(val>0){
-      const vs=el("span",{style:{fontSize:`${valSz}px`,fontWeight:"500",color:isWrong?T().textWrong:isDoneCage?"#80ff80":T().textCorrect,fontFamily:"Georgia,serif",transition:"color 0.15s"}});
+      const numColor=isWrong?T().textWrong:isDoneCage?"#80ff80":isNeon?cage.color:T().textCorrect;
+      const numGlow=isNeon?`0 0 6px ${numColor}, 0 0 14px ${numColor}, 0 0 28px ${numColor}80`:"none";
+      const vs=el("span",{style:{fontSize:`${valSz}px`,fontWeight:"700",color:numColor,fontFamily:isNeon?"'Orbitron', sans-serif":"Georgia,serif",transition:"color 0.15s",textShadow:numGlow}});
       vs.textContent=val; cell.appendChild(vs);
     }
 
@@ -797,28 +777,45 @@ function renderGame(){
 
   boardWrap.appendChild(grid);
   app.appendChild(boardWrap);
-  // Speichere Referenz für Partikel
   window._boardRect=boardWrap.getBoundingClientRect.bind(boardWrap);
 
   // Zahlenpad
   const numpad=el("div",{style:{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:"3px",width:`${boardW}px`,maxWidth:"97vw",flexShrink:"0"}});
   const counts={1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
   state.userGrid.forEach(row=>row.forEach(v=>{if(v>0)counts[v]++;}));
+  const neonNumColors=["#ff6b6b","#ffa94d","#ffe066","#69db7c","#4ecdc4","#74c0fc","#da77f2","#ff9ff3","#a9e34b"];
   for(let n=1;n<=9;n++){
-    const b=el("button",{style:{height:`${Math.max(36,Math.floor(state.actionBtnH*0.68))}px`,background:T().btnBg,border:`1px solid ${T().btnBorder}`,color:T().text,borderRadius:"7px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",padding:"1px",opacity:counts[n]>=9?"0.18":"1",fontSize:`${Math.max(14,Math.floor(CELL*0.38))}px`}});
-    b.innerHTML=`<span style="line-height:1">${n}</span><span style="font-size:7px;color:${T().btnText};line-height:1">${9-counts[n]}</span>`;
+    const nColor=isNeon?neonNumColors[n-1]:T().text;
+    const nGlow=isNeon?`0 0 6px ${nColor}, 0 0 14px ${nColor}90`:"none";
+    const nBorder=isNeon?`1px solid ${nColor}50`:`1px solid ${T().btnBorder}`;
+    const nBg=isNeon?`${nColor}10`:T().btnBg;
+    const b=el("button",{style:{height:`${Math.max(36,Math.floor(state.actionBtnH*0.68))}px`,background:nBg,border:nBorder,color:nColor,borderRadius:"7px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",padding:"1px",opacity:counts[n]>=9?"0.18":"1",fontSize:`${Math.max(14,Math.floor(CELL*0.38))}px`,textShadow:nGlow}});
+    b.innerHTML=`<span style="line-height:1">${n}</span><span style="font-size:7px;color:${isNeon?nColor+"99":T().btnText};line-height:1;text-shadow:none">${9-counts[n]}</span>`;
     b.onclick=()=>inputNum(n); numpad.appendChild(b);
   }
   app.appendChild(numpad);
 
   // Aktions-Buttons
   const actions=el("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px",width:`${boardW}px`,maxWidth:"97vw",flexShrink:"0"}});
+  const actionNeonColors=["#a080ff","#74c0fc","#ffe066"];
   [
     {label:"✏️",sub:"Notiz",active:state.noteMode,color:T().noteColor,fn:()=>{state.noteMode=!state.noteMode;renderGame();}},
     {label:"↩",sub:"Undo",active:false,disabled:!state.history.length,fn:undoAction},
     {label:"💡",sub:`(${state.hintsLeft})`,active:false,disabled:!state.hintsLeft||!state.selected,fn:giveHint},
-  ].forEach(({label:lbl,sub,active,color,disabled,fn})=>{
-    const b=el("button",{style:{height:`${state.actionBtnH}px`,background:active?T().cellSel:T().btnBg,border:`1px solid ${active?(color||T().accent):T().btnBorder}`,color:active?(color||T().text):T().btnText,borderRadius:"10px",cursor:disabled?"default":"pointer",fontSize:"22px",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"2px",opacity:disabled?"0.3":"1",transition:"all 0.12s"}});
+  ].forEach(({label:lbl,sub,active,color,disabled,fn},i)=>{
+    const nc=actionNeonColors[i];
+    const neonStyle=isNeon?{
+      background:active?`${nc}22`:`${nc}0a`,
+      border:`1px solid ${active?nc:nc+"55"}`,
+      color:nc,
+      textShadow:active?`0 0 8px ${nc}, 0 0 16px ${nc}`:`0 0 6px ${nc}`,
+      boxShadow:active?`0 0 12px ${nc}40, inset 0 0 8px ${nc}10`:`0 0 6px ${nc}20`,
+    }:{
+      background:active?T().cellSel:T().btnBg,
+      border:`1px solid ${active?(color||T().accent):T().btnBorder}`,
+      color:active?(color||T().text):T().btnText,
+    };
+    const b=el("button",{style:{height:`${state.actionBtnH}px`,borderRadius:"10px",cursor:disabled?"default":"pointer",fontSize:"22px",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"2px",opacity:disabled?"0.3":"1",transition:"all 0.12s",...neonStyle}});
     b.innerHTML=`<span>${lbl}</span><span style="font-size:10px">${sub}</span>`;
     b.onclick=disabled?null:fn; actions.appendChild(b);
   });
@@ -835,9 +832,6 @@ function inputNum(num){
   if(!state.selected||!state.userGrid)return;
   const [r,c]=state.selected;
   if(navigator?.vibrate)navigator.vibrate(10);
-
-  // Zelle gesperrt wenn korrekt ausgefüllt
-  if(state.userGrid[r][c]===state.solution[r][c]) return;
 
   if(state.noteMode&&num>0){
     const s=new Set(state.notes[r][c]);
@@ -862,9 +856,6 @@ function inputNum(num){
   state.history.push(JSON.stringify(state.userGrid));
   if(state.history.length>30)state.history.shift();
   state.userGrid[r][c]=num;
-
-  // Notizen der Zelle löschen wenn korrekt
-  if(num>0&&num===state.solution[r][c]) state.notes[r][c]=new Set();
 
   if(num>0){
     for(let ri=0;ri<9;ri++) for(let ci=0;ci<9;ci++){
