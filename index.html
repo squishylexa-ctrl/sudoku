@@ -140,6 +140,17 @@
 <div id="app"></div>
 
 <script>
+// ── HELFERFUNKTIONEN FÜR CAGES (WICHTIG!) ────────────────────────
+function buildCageMap(cages) {
+  const m = {};
+  cages.forEach((c,i) => c.cells.forEach(([r,col]) => { m[`${r},${col}`]=i; }));
+  return m;
+}
+
+function cageTopLeft(cageIdx, cages) {
+  return [...cages[cageIdx].cells].sort((a,b) => a[0]-b[0]||a[1]-b[1])[0];
+}
+
 // ── GLOBALE SYSTEM-DATEN ─────────────────────────────────────────
 const THEMES = ["dark", "light", "sepia", "mint", "neon"];
 let currentTheme = localStorage.getItem("ns_theme") || "dark";
@@ -342,7 +353,6 @@ function render() {
       app.appendChild(cBtn);
     }
     
-    // HIER IST DER LINK ZUM BATTLE MODUS IM HAUPTMENÜ
     const bBtn = document.createElement("button");
     bBtn.className = "menu-btn battle-btn";
     bBtn.textContent = "⚔️ BATTLE MODUS";
