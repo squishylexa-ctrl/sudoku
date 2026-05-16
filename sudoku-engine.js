@@ -24,11 +24,20 @@ function makeCages(sol, diff) {
   const cages = []; const done = Array.from({length:9}, () => Array(9).fill(false));
   const colors = ["#ff6b6b","#ffa94d","#69db7c","#4cc9f0","#da77f2"];
   
+  // Bestimme die maximale Cage-Größe basierend auf dem Schwierigkeitsgrad
+  let maxCageSize = 3;
+  if (diff === "easy") maxCageSize = 2;
+  else if (diff === "mittel") maxCageSize = 3;
+  else if (diff === "schwer") maxCageSize = 4;
+  else if (diff === "boshaft") maxCageSize = 5;
+
   for(let r=0; r<9; r++) {
     for(let c=0; c<9; c++) {
       if(done[r][c]) continue;
       const cage = [[r,c]]; done[r][c]=true;
-      let size = Math.floor(Math.random()*3)+1;
+      
+      // Nutze die maxCageSize, damit die Schleife ein klares Ende hat
+      let size = Math.floor(Math.random() * maxCageSize) + 1;
       while(cage.length < size) {
         const [lr,lc] = cage[cage.length-1];
         const nb = [[lr-1,lc],[lr+1,lc],[lr,lc-1],[lr,lc+1]]
@@ -61,4 +70,4 @@ function isCageDone(cage, grid) {
     s += grid[r][c];
   }
   return s === cage.sum;
-} // <-- Diese Klammer hat gefehlt!
+}
