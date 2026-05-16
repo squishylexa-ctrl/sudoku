@@ -7,8 +7,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Orbitron', sans-serif; background: #080610; color: #d0c8ff; }
-  #app { position: fixed; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow-y:auto; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: Georgia, 'Times New Roman', serif; transition: background 0.3s, color 0.3s; }
+  body.neon-theme { font-family: 'Orbitron', sans-serif; }
+  #app { position: fixed; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow-y:auto; padding: 10px; }
   button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   button:active { opacity: 0.75; }
 
@@ -21,232 +22,370 @@
   }
   .shake { animation: shake 0.3s; }
 
-  /* Scanlines */
-  body::after {
+  /* SCANLINES EFFECT */
+  .scanlines::after {
     content: ''; position: fixed; inset: 0;
-    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px);
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
     pointer-events: none; z-index: 999;
   }
 
-  .menu-title { font-size: 32px; font-weight: 900; text-align: center; margin-bottom: 30px; letter-spacing: 2px; color: #00ffff; text-shadow: 0 0 10px #00ffff; }
-  .menu-btn { width: 220px; padding: 12px; margin: 8px; font-size: 14px; font-weight: 700; background: rgba(0,255,255,0.05); border: 2px solid #00ffff; color: #00ffff; border-radius: 4px; box-shadow: 0 0 10px rgba(0,255,255,0.2); transition: all 0.2s; }
-  .menu-btn:hover { background: #00ffff; color: #080610; box-shadow: 0 0 20px #00ffff; }
-  
-  .battle-btn { border-color: #ff40ff; color: #ff40ff; box-shadow: 0 0 10px rgba(255,64,255,0.2); }
-  .battle-btn:hover { background: #ff40ff; color: #080610; box-shadow: 0 0 20px #ff40ff; }
+  /* THEMES CONFIG */
+  /* 1. DARK (Default) */
+  body.theme-dark { background: #0b0f19; color: #cbd5e1; }
+  .theme-dark .cell { border: 1px solid #1e293b; background: #0f172a; color: #f8fafc; }
+  .theme-dark .cell.selected { background: #334155 !important; }
+  .theme-dark .cell.same-num { background: #1e293b; }
+  .theme-dark .key { background: #1e293b; color: #f8fafc; border: 1px solid #334155; }
+  .theme-dark .key.active { background: #3b82f6; color: #fff; }
+  .theme-dark .menu-btn { background: #1e293b; color: #f8fafc; border: 1px solid #334155; }
 
-  /* Sudoku Feld */
-  .board { display: grid; grid-template-columns: repeat(9, 1fr); width: 100%; max-width: 420px; aspect-ratio: 1; border: 3px solid #00ffff; background: #0c091f; box-shadow: 0 0 20px rgba(0,255,255,0.15); margin: 15px 0; }
-  .cell { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; aspect-ratio: 1; border: 1px solid rgba(0,255,255,0.15); font-size: 18px; font-weight: 700; color: #ffffff; cursor: pointer; }
+  /* 2. LIGHT */
+  body.theme-light { background: #f8fafc; color: #334155; }
+  .theme-light .cell { border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a; }
+  .theme-light .cell.selected { background: #cbd5e1 !important; }
+  .theme-light .cell.same-num { background: #f1f5f9; }
+  .theme-light .key { background: #e2e8f0; color: #0f172a; border: 1px solid #cbd5e1; }
+  .theme-light .key.active { background: #3b82f6; color: #fff; }
+  .theme-light .menu-btn { background: #e2e8f0; color: #0f172a; border: 1px solid #cbd5e1; }
+
+  /* 3. SEPIA */
+  body.theme-sepia { background: #f4ecd8; color: #5c4326; }
+  .theme-sepia .cell { border: 1px solid #e4d5b7; background: #fdfaf2; color: #43301a; }
+  .theme-sepia .cell.selected { background: #d9c59d !important; }
+  .theme-sepia .cell.same-num { background: #ebdcb9; }
+  .theme-sepia .key { background: #e4d5b7; color: #43301a; border: 1px solid #d9c59d; }
+  .theme-sepia .key.active { background: #8c6239; color: #fff; }
+  .theme-sepia .menu-btn { background: #e4d5b7; color: #43301a; border: 1px solid #d9c59d; }
+
+  /* 4. MINT */
+  body.theme-mint { background: #e8f5e9; color: #2e7d32; }
+  .theme-mint .cell { border: 1px solid #c8e6c9; background: #ffffff; color: #1b5e20; }
+  .theme-mint .cell.selected { background: #a5d6a7 !important; }
+  .theme-mint .cell.same-num { background: #e8f5e9; }
+  .theme-mint .key { background: #c8e6c9; color: #1b5e20; border: 1px solid #a5d6a7; }
+  .theme-mint .key.active { background: #2e7d32; color: #fff; }
+  .theme-mint .menu-btn { background: #c8e6c9; color: #1b5e20; border: 1px solid #a5d6a7; }
+
+  /* 5. NEON (Orbitron + Glow) */
+  body.theme-neon { background: #080610; color: #d0c8ff; font-family: 'Orbitron', sans-serif; }
+  body.theme-neon .cell { border: 1px solid rgba(0,255,255,0.15); background: #0c091f; color: #ffffff; box-shadow: 0 0 5px rgba(0,255,255,0.05); }
+  body.theme-neon .cell.selected { background: rgba(0,255,255,0.25) !important; box-shadow: inset 0 0 8px #00ffff; }
+  body.theme-neon .cell.same-num { background: rgba(0,255,255,0.1); }
+  body.theme-neon .key { background: rgba(0,255,255,0.03); color: #00ffff; border: 1px solid rgba(0,255,255,0.3); }
+  body.theme-neon .key.active { background: #00ffff; color: #080610; box-shadow: 0 0 10px #00ffff; }
+  body.theme-neon .menu-btn { background: rgba(0,255,255,0.03); color: #00ffff; border: 2px solid #00ffff; box-shadow: 0 0 10px rgba(0,255,255,0.1); font-family: 'Orbitron', sans-serif; font-weight: 700; }
+  body.theme-neon .menu-title { font-family: 'Orbitron', sans-serif; font-weight: 900; color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+  body.theme-neon .cell.err { color: #ff4444; text-shadow: 0 0 5px #ff4444; background: rgba(255,68,68,0.15); }
+  body.theme-neon .battle-btn { border-color: #ff40ff; color: #ff40ff; box-shadow: 0 0 10px rgba(255,64,255,0.2); }
+
+  /* STANDARD UI */
+  .menu-title { font-size: 28px; font-weight: bold; margin-bottom: 25px; letter-spacing: 2px; text-align: center; }
+  .menu-btn { width: 220px; padding: 12px; margin: 6px; font-size: 14px; border-radius: 4px; text-align: center; font-weight: bold; }
   
-  /* 3x3 Block-Grenzen */
-  .cell:nth-child(3n) { border-right: 2px solid #00ffff; }
-  .cell:nth-child(9n) { border-right: none; }
+  .stats-banner { font-size: 11px; color: #64748b; margin-bottom: 15px; display: flex; gap: 15px; background: rgba(0,0,0,0.1); padding: 6px 12px; border-radius: 20px; font-weight: bold; }
+  body.theme-neon .stats-banner { color: #8b9bb4; background: rgba(255,255,255,0.03); border: 1px solid rgba(0,255,255,0.1); }
+
+  .board { display: grid; grid-template-columns: repeat(9, 1fr); width: 100%; max-width: 400px; aspect-ratio: 1; border: 2px solid #334155; margin-bottom: 12px; }
+  body.theme-neon .board { border: 3px solid #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.15); }
+
+  .cell { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; aspect-ratio: 1; font-size: 18px; font-weight: bold; cursor: pointer; }
+  .cell:nth-child(3n) { border-right-width: 2px !important; }
+  body.theme-neon .cell:nth-child(3n) { border-right: 2px solid #00ffff !important; }
+  .cell:nth-child(9n) { border-right-width: 1px !important; }
+  body.theme-neon .cell:nth-child(9n) { border-right: 1px solid rgba(0,255,255,0.15) !important; }
+
   .board > .cell:nth-child(n+19):nth-child(-n+27),
-  .board > .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #00ffff; }
+  .board > .cell:nth-child(n+46):nth-child(-n+54) { border-bottom-width: 2px !important; }
+  body.theme-neon .board > .cell:nth-child(n+19):nth-child(-n+27),
+  body.theme-neon .board > .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #00ffff !important; }
 
-  .cell.selected { background: rgba(0,255,255,0.25) !important; box-shadow: inset 0 0 8px #00ffff; }
-  .cell.same-num { background: rgba(0,255,255,0.1); }
-  .cell.err { color: #ff4444; text-shadow: 0 0 5px #ff4444; background: rgba(255,68,68,0.15); }
+  .cell.err { color: #ef4444; background: rgba(239,68,68,0.1); }
+  .cell.fixed { font-weight: 900; opacity: 0.85; }
 
-  /* Cage Summen */
-  .cage-sum { position: absolute; top: 1px; left: 2px; font-size: 8px; font-weight: 400; opacity: 0.8; pointer-events: none; }
+  .cage-sum { position: absolute; top: 1px; left: 2px; font-size: 8px; font-weight: normal; opacity: 0.7; pointer-events: none; }
+  .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; height: 100%; padding: 1px; pointer-events: none; }
+  .note-cell { display: flex; align-items: center; justify-content: center; font-size: 7px; color: #64748b; font-weight: normal; }
+  body.theme-neon .note-cell { color: #8b9bb4; }
 
-  /* Notizen */
-  .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; height: 100%; padding: 2px; pointer-events: none; }
-  .note-cell { display: flex; align-items: center; justify-content: center; font-size: 7px; color: #8899af; font-weight: 400; }
+  .top-bar { display: flex; justify-content: space-between; width: 100%; max-width: 400px; padding: 0 4px; font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px; }
+  body.theme-neon .top-bar { color: #8b9bb4; }
 
-  /* Keypad */
-  .keypad { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; max-width: 420px; gap: 6px; padding: 0 10px; margin-top: 10px; }
-  .key { padding: 12px 0; font-size: 16px; font-weight: 700; background: rgba(0,255,255,0.03); border: 1px solid rgba(0,255,255,0.3); color: #00ffff; border-radius: 4px; text-align: center; }
-  .key:hover { background: rgba(0,255,255,0.1); }
-  .key.active { background: #00ffff; color: #080610; box-shadow: 0 0 10px #00ffff; }
+  .keypad { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; max-width: 400px; gap: 4px; padding: 0 4px; }
+  .key { padding: 10px 0; font-size: 15px; font-weight: bold; border-radius: 4px; text-align: center; }
 
-  /* Top Bar */
-  .top-bar { display: flex; justify-content: space-between; width: 100%; max-width: 420px; padding: 0 10px; font-size: 12px; font-weight: 700; color: #8b9bb4; }
-  
-  .theme-panel { display: flex; gap: 5px; margin-top: 15px; }
-  .theme-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
-  .theme-dot.active { border-color: #ffffff; }
+  .theme-panel { display: flex; gap: 6px; margin-top: 15px; background: rgba(0,0,0,0.05); padding: 6px; border-radius: 20px; }
+  body.theme-neon .theme-panel { background: rgba(255,255,255,0.02); border: 1px solid rgba(0,255,255,0.1); }
+  .theme-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+  .theme-dot.active { border-color: currentColor; }
+
+  /* OVERLAYS & LEVEL UP */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  body.theme-neon .overlay { background: radial-gradient(circle, #120e2e 0%, #05040a 100%); }
+  .overlay-title { font-size: 24px; font-weight: 900; margin-bottom: 10px; text-align: center; }
+  .levelup-badge { background: #eab308; color: #000; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; margin: 10px 0; }
+  .xp-bar-bg { width: 160px; height: 6px; background: #334155; border-radius: 3px; overflow: hidden; margin: 8px 0; }
+  .xp-bar-fill { height: 100%; background: #eab308; width: 0%; transition: width 0.6s ease-out; }
+  body.theme-neon .xp-bar-fill { background: #00ffff; box-shadow: 0 0 8px #00ffff; }
+  .overlay-btn { width: 160px; padding: 10px; background: #3b82f6; color: #fff; border-radius: 4px; font-weight: bold; font-size: 12px; margin-top: 15px; text-align: center; }
+  body.theme-neon .overlay-btn { background: transparent; border: 1px solid #00ffff; color: #00ffff; box-shadow: 0 0 10px rgba(0,255,255,0.2); }
+
+  /* CONFETTI */
+  .confetti { position: fixed; width: 4px; height: 4px; pointer-events: none; z-index: 150; border-radius: 50%; }
 </style>
+<script src="sudoku-engine.js"></script>
+<script src="monsters.js"></script>
 </head>
-<body>
+<body class="theme-dark scanlines">
 
 <div id="app"></div>
 
 <script>
-// ── ENGINE LOGIK DIREKT INTEGRIERT ──────────────────────────────
-const CAGE_COLORS = ["rgba(255,107,107,0.07)","rgba(255,169,77,0.07)","rgba(38,208,160,0.07)","rgba(91,164,207,0.07)","rgba(180,122,224,0.07)"];
+// ── GLOBALE SYSTEM-DATEN ─────────────────────────────────────────
+const THEMES = ["dark", "light", "sepia", "mint", "neon"];
+let currentTheme = localStorage.getItem("ns_theme") || "dark";
 
-function generateSolution() {
-  const g = Array.from({length:9}, () => Array(9).fill(0));
-  const ok = (r,c,n) => {
-    for(let i=0;i<9;i++) if(g[r][i]===n||g[i][c]===n) return false;
-    const br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
-    for(let i=0;i<3;i++) for(let j=0;j<3;j++) if(g[br+i][bc+j]===n) return false;
-    return true;
-  };
-  const solve = pos => {
-    if(pos===81) return true;
-    const r=Math.floor(pos/9), c=pos%9;
-    const nums=[1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-0.5);
-    for(let n of nums) {
-      if(ok(r,c,n)) { g[r][c]=n; if(solve(pos+1)) return true; g[r][c]=0; }
-    }
-    return false;
-  };
-  solve(0); return g;
+const pdata = { xp: 0, level: 1, bestTimes: {} };
+function loadProfile() {
+  try {
+    const s = localStorage.getItem("ns_profile");
+    if(s) { const d = JSON.parse(s); pdata.xp = d.xp||0; pdata.level = d.level||1; pdata.bestTimes = d.bestTimes||{}; }
+  } catch(e){}
+}
+function saveProfile() { localStorage.setItem("ns_profile", JSON.stringify(pdata)); }
+function xpForLevel(lvl) { return lvl * 200; }
+function addXp(amount) {
+  let oldLvl = pdata.level; pdata.xp += amount;
+  while(pdata.xp >= xpForLevel(pdata.level)) { pdata.xp -= xpForLevel(pdata.level); pdata.level++; }
+  saveProfile();
+  return { leveledUp: pdata.level > oldLvl, oldLevel: oldLvl, newLevel: pdata.level };
 }
 
-function makeCages(sol, diff) {
-  const cages = []; const done = Array.from({length:9}, () => Array(9).fill(false));
-  let target = diff === "Einfach" ? 35 : diff === "Normal" ? 45 : diff === "Schwer" ? 55 : 65;
-  
-  for(let r=0; r<9; r++) {
-    for(let c=0; c<9; c++) {
-      if(done[r][c]) continue;
-      const cage = [[r,c]]; done[r][c]=true;
-      let size = Math.floor(Math.random()*3)+1;
-      while(cage.length < size) {
-        const [lr,lc] = cage[cage.length-1];
-        const nb = [[lr-1,lc],[lr+1,lc],[lr,lc-1],[lr,lc+1]]
-          .filter(([cr,cc]) => cr>=0&&cr<9&&cc>=0&&cc<9&&!done[cr][cc]);
-        if(!nb.length) break;
-        const [nr,nc] = nb[Math.floor(Math.random()*nb.length)];
-        cage.push([nr,nc]); done[nr][nc]=true;
-      }
-      const sum = cage.reduce((s,[cr,cc]) => s+sol[cr][cc], 0);
-      cages.push({cells:cage, sum, color:CAGE_COLORS[cages.length%CAGE_COLORS.length]});
-    }
-  }
-  return cages;
-}
-
-// ── SPIEL ZUSTAND ────────────────────────────────────────────────
+// ── SPIEL-ZUSTAND ────────────────────────────────────────────────
 const state = {
   screen: "menu", difficulty: "Normal",
-  solution: null, cages: null, cageMap: {}, userGrid: null,
-  selected: null, noteMode: false,
-  notes: Array.from({length:9},()=>Array.from({length:9},()=>new Set())),
-  seconds: 0, timerInterval: null
+  solution: null, cages: null, cageMap: {}, userGrid: null, fixedMask: null,
+  selected: null, noteMode: false, notes: null,
+  seconds: 0, timerInterval: null, hintsLeft: 3, history: [],
+  completedCages: new Set(), hadErrors: false, usedHints: false,
+  newBest: false, xpGain: null, levelUpResult: null
 };
 
+function saveGame() {
+  if(state.screen !== "game") return;
+  const s = {
+    difficulty: state.difficulty, solution: state.solution, cages: state.cages, cageMap: state.cageMap,
+    userGrid: state.userGrid, seconds: state.seconds, hintsLeft: state.hintsLeft
+  };
+  localStorage.setItem("ns_save", JSON.stringify(s));
+}
+function loadGame() {
+  try { const s = localStorage.getItem("ns_save"); return s ? JSON.parse(s) : null; } catch { return null; }
+}
+function clearSave() { localStorage.removeItem("ns_save"); }
+
+function setTheme(t) {
+  currentTheme = t; localStorage.setItem("ns_theme", t);
+  document.body.className = `theme-${t}`;
+  if(t === "neon") document.body.classList.add("neon-theme", "scanlines");
+  else document.body.classList.remove("neon-theme", "scanlines");
+  const dots = document.querySelectorAll(".theme-dot");
+  dots.forEach(d => d.classList.toggle("active", d.dataset.theme === t));
+}
+
+// ── TIMER ────────────────────────────────────────────────────────
+function startTimer() {
+  clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => { state.seconds++; updateTimerUi(); if(state.seconds%5===0) saveGame(); }, 1000);
+}
+function stopTimer() { clearInterval(state.timerInterval); }
+function updateTimerUi() {
+  const el = document.getElementById("timer-display");
+  if(el) {
+    const m = Math.floor(state.seconds/60).toString().padStart(2,'0');
+    const s = (state.seconds%60).toString().padStart(2,'0');
+    el.textContent = `${m}:${s}`;
+  }
+}
+
+// ── GAMEPLAY MECHANIKEN ──────────────────────────────────────────
 function initGame(diff) {
+  stopTimer();
   state.difficulty = diff;
   state.solution = generateSolution();
   state.cages = makeCages(state.solution, diff);
-  state.cageMap = {};
-  state.cages.forEach((c,i) => c.cells.forEach(([cr,cc]) => { state.cageMap[`${cr},${cc}`]=i; }));
-  
-  // Spielfeld leeren basierend auf Schwierigkeit
+  state.cageMap = buildCageMap(state.cages);
+
   state.userGrid = Array.from({length:9}, () => Array(9).fill(0));
-  let clues = diff === "Einfach" ? 40 : diff === "Normal" ? 30 : diff === "Schwer" ? 22 : 15;
+  state.fixedMask = Array.from({length:9}, () => Array(9).fill(false));
+
+  let clues = diff === "Einfach" ? 38 : diff === "Normal" ? 30 : diff === "Schwer" ? 23 : 16;
   let positions = Array.from({length:81}, (_,i)=>i).sort(()=>Math.random()-0.5);
   for(let i=0; i<clues; i++) {
     const r = Math.floor(positions[i]/9), c = positions[i]%9;
     state.userGrid[r][c] = state.solution[r][c];
+    state.fixedMask[r][c] = true;
   }
 
-  state.selected = null; state.seconds = 0;
-  clearInterval(state.timerInterval);
-  state.timerInterval = setInterval(() => { state.seconds++; updateTimerUi(); }, 1000);
-  state.screen = "game";
-  render();
+  state.notes = Array.from({length:9}, () => Array.from({length:9}, () => new Set()));
+  state.history = []; state.seconds = 0; state.hintsLeft = 3;
+  state.completedCages = new Set(); state.newBest = false; state.xpGain = null;
+  state.levelUpResult = null; state.hadErrors = false; state.usedHints = false;
+  state.selected = null; state.noteMode = false;
+  
+  state.screen = "game"; render(); startTimer();
 }
 
-function updateTimerUi() {
-  const t = document.getElementById("timer-display");
-  if(t) {
-    const m = Math.floor(state.seconds/60).toString().padStart(2,'0');
-    const s = (state.seconds%60).toString().padStart(2,'0');
-    t.textContent = `${m}:${s}`;
-  }
+function continueGame() {
+  const s = loadGame(); if(!s) return;
+  stopTimer();
+  state.solution = s.solution; state.cages = s.cages; state.cageMap = s.cageMap;
+  state.userGrid = s.userGrid; state.difficulty = s.difficulty;
+  state.seconds = s.seconds || 0; state.hintsLeft = s.hintsLeft ?? 3;
+  state.fixedMask = Array.from({length:9}, () => Array(9).fill(false));
+  for(let r=0;r<9;r++) { for(let c=0;c<9;c++) { if(state.userGrid[r][c] === state.solution[r][c]) state.fixedMask[r][c]=true; } }
+
+  state.notes = Array.from({length:9}, () => Array.from({length:9}, () => new Set()));
+  state.history = []; state.completedCages = new Set(); state.selected = null;
+  state.screen = "game"; render(); startTimer();
+}
+
+function pushHistory() {
+  const gCopy = state.userGrid.map(r => [...r]);
+  const nCopy = state.notes.map(row => row.map(s => new Set(s)));
+  state.history.push({ grid: gCopy, notes: nCopy });
+  if(state.history.length > 20) state.history.shift();
+}
+
+function undo() {
+  if(!state.history.length) return;
+  const last = state.history.pop();
+  state.userGrid = last.grid; state.notes = last.notes;
+  render();
 }
 
 function inputNum(n) {
   if(!state.selected) return;
   const [r,c] = state.selected;
+  if(state.fixedMask[r][c]) return;
+
+  pushHistory();
   if(state.noteMode) {
-    if(n===0) state.notes[r][c].clear();
-    else if(state.notes[r][c].has(n)) state.notes[r][c].delete(n);
-    else state.notes[r][c].add(n);
+    if(n === 0) state.notes[r][c].clear();
+    else {
+      if(state.notes[r][c].has(n)) state.notes[r][c].delete(n);
+      else { state.notes[r][c].add(n); state.userGrid[r][c] = 0; }
+    }
   } else {
-    state.userGrid[r][c] = state.userGrid[r][c] === n ? 0 : n;
+    if(state.userGrid[r][c] === n) state.userGrid[r][c] = 0;
+    else { state.userGrid[r][c] = n; if(n !== 0 && n !== state.solution[r][c]) { state.hadErrors = true; triggerShake(); } }
   }
   render();
   checkWin();
 }
 
-function checkWin() {
-  for(let r=0;r<9;r++) {
-    for(let c=0;c<9;c++) {
-      if(state.userGrid[r][c] !== state.solution[r][c]) return;
-    }
-  }
-  clearInterval(state.timerInterval);
-  alert("🎉 Geflasht! Du hast das Rätsel gelöst!");
-  state.screen = "menu";
-  render();
+function triggerShake() {
+  const b = document.querySelector(".board");
+  if(b) { b.classList.add("shake"); setTimeout(() => b.classList.remove("shake"), 300); }
 }
 
-// ── UI RENDERER ──────────────────────────────────────────────────
+function useHint() {
+  if(state.hintsLeft <= 0 || !state.selected) return;
+  const [r,c] = state.selected;
+  if(state.userGrid[r][c] === state.solution[r][c]) return;
+  pushHistory();
+  state.userGrid[r][c] = state.solution[r][c];
+  state.fixedMask[r][c] = true;
+  state.hintsLeft--; state.usedHints = true;
+  render();
+  checkWin();
+}
+
+function checkWin() {
+  for(let r=0; r<9; r++) {
+    for(let c=0; c<9; c++) { if(state.userGrid[r][c] !== state.solution[r][c]) return; }
+  }
+  stopTimer(); clearSave();
+  
+  // XP Berechnung
+  let base = state.difficulty === "Einfach" ? 50 : state.difficulty === "Normal" ? 100 : state.difficulty === "Schwer" ? 180 : 300;
+  if(!state.hadErrors) base = Math.round(base * 1.5);
+  if(state.usedHints) base = Math.round(base * 0.5);
+  state.xpGain = base;
+  state.levelUpResult = addXp(base);
+
+  // Highscore
+  const prevBest = pdata.bestTimes[state.difficulty];
+  if(!prevBest || state.seconds < prevBest) { pdata.bestTimes[state.difficulty] = state.seconds; state.newBest = true; saveProfile(); }
+
+  state.screen = "victory"; render();
+}
+
+// ── UI RENDERING ─────────────────────────────────────────────────
 const app = document.getElementById("app");
 
 function render() {
   app.innerHTML = "";
+  
   if(state.screen === "menu") {
     app.innerHTML = `
       <div class="menu-title">NEO SUDOKU</div>
+      <div class="stats-banner"><span>LVL ${pdata.level}</span><span>XP ${pdata.xp}/${xpForLevel(pdata.level)}</span></div>
       <button class="menu-btn" onclick="initGame('Einfach')">EINFACH</button>
       <button class="menu-btn" onclick="initGame('Normal')">NORMAL</button>
       <button class="menu-btn" onclick="initGame('Schwer')">SCHWER</button>
       <button class="menu-btn" onclick="initGame('Boshaft')">BOSHAFT</button>
-      <button class="menu-btn battle-btn" onclick="window.location.href='battle.html'">⚔️ BATTLE MODUS</button>
     `;
-  } else if(state.screen === "game") {
+    if(loadGame()) {
+      const cBtn = document.createElement("button");
+      cBtn.className = "menu-btn"; cBtn.style.borderColor = "#eab308"; cBtn.style.color = "#eab308";
+      cBtn.textContent = "FORTSETZEN"; cBtn.onclick = continueGame;
+      app.appendChild(cBtn);
+    }
+    
+    // HIER IST DER LINK ZUM BATTLE MODUS IM HAUPTMENÜ
+    const bBtn = document.createElement("button");
+    bBtn.className = "menu-btn battle-btn";
+    bBtn.textContent = "⚔️ BATTLE MODUS";
+    bBtn.onclick = () => { window.location.href = "battle.html"; };
+    app.appendChild(bBtn);
+
+    renderThemePanel();
+  } 
+  
+  else if(state.screen === "game") {
     // Top Bar
-    const topBar = document.createElement("div");
-    topBar.className = "top-bar";
+    const topBar = document.createElement("div"); topBar.className = "top-bar";
     topBar.innerHTML = `<span>${state.difficulty.toUpperCase()}</span><span id="timer-display">00:00</span>`;
     app.appendChild(topBar);
 
     // Board
-    const board = document.createElement("div");
-    board.className = "board";
-    
+    const board = document.createElement("div"); board.className = "board";
     for(let r=0; r<9; r++) {
       for(let c=0; c<9; c++) {
-        const cell = document.createElement("div");
-        cell.className = "cell";
-        
-        const cageIdx = state.cageMap[`${r},${c}`];
-        const cage = state.cages[cageIdx];
-        if(cage) cell.style.background = cage.color;
+        const cell = document.createElement("div"); cell.className = "cell";
+        if(state.fixedMask[r][c]) cell.classList.add("fixed");
 
-        // Zeige Summe links oben im ersten Cage-Feld
-        const isTopLeft = cage.cells[0][0] === r && cage.cells[0][1] === c;
-        if(isTopLeft) {
-          const sumEl = document.createElement("div");
-          sumEl.className = "cage-sum";
-          sumEl.textContent = cage.sum;
-          cell.appendChild(sumEl);
+        const cageIdx = state.cageMap[`${r},${c}`];
+        if(cageIdx !== undefined) {
+          cell.style.backgroundColor = state.cages[cageIdx].color + "12";
+          if(cageTopLeft(cageIdx, state.cages)[0]===r && cageTopLeft(cageIdx, state.cages)[1]===c) {
+            const sumEl = document.createElement("div"); sumEl.className = "cage-sum";
+            sumEl.textContent = state.cages[cageIdx].sum; cell.appendChild(sumEl);
+          }
         }
 
-        // Selektion & Highlights
+        // Selection & Highlights
         if(state.selected && state.selected[0]===r && state.selected[1]===c) cell.classList.add("selected");
         else if(state.selected && state.userGrid[r][c] && state.userGrid[r][c] === state.userGrid[state.selected[0]][state.selected[1]]) cell.classList.add("same-num");
 
-        // Werte oder Notizen eintragen
         const val = state.userGrid[r][c];
         if(val !== 0) {
           cell.appendChild(document.createTextNode(val));
-          if(val !== state.solution[r][c]) cell.classList.add("err");
+          if(val !== state.solution[r][c] && !state.fixedMask[r][c]) cell.classList.add("err");
         } else {
-          const nGrid = document.createElement("div");
-          nGrid.className = "notes-grid";
+          const nGrid = document.createElement("div"); nGrid.className = "notes-grid";
           for(let i=1; i<=9; i++) {
-            const nCell = document.createElement("div");
-            nCell.className = "note-cell";
+            const nCell = document.createElement("div"); nCell.className = "note-cell";
             if(state.notes[r][c].has(i)) nCell.textContent = i;
             nGrid.appendChild(nCell);
           }
@@ -260,41 +399,82 @@ function render() {
     app.appendChild(board);
 
     // Keypad
-    const keypad = document.createElement("div");
-    keypad.className = "keypad";
+    const keypad = document.createElement("div"); keypad.className = "keypad";
     for(let i=1; i<=9; i++) {
-      const key = document.createElement("button");
-      key.className = "key";
-      key.textContent = i;
-      key.onclick = () => inputNum(i);
-      keypad.appendChild(key);
+      const k = document.createElement("button"); k.className = "key"; k.textContent = i;
+      k.onclick = () => inputNum(i); keypad.appendChild(k);
     }
     
-    // Steuer-Tasten
-    const noteKey = document.createElement("button");
-    noteKey.className = `key ${state.noteMode ? 'active' : ''}`;
-    noteKey.textContent = "📝";
-    noteKey.onclick = () => { state.noteMode = !state.noteMode; render(); };
-    keypad.appendChild(noteKey);
+    const nKey = document.createElement("button"); nKey.className = `key ${state.noteMode?'active':''}`; nKey.textContent = "📝";
+    nKey.onclick = () => { state.noteMode = !state.noteMode; render(); }; keypad.appendChild(nKey);
 
-    const delKey = document.createElement("button");
-    delKey.className = "key";
-    delKey.textContent = "⌫";
-    delKey.onclick = () => inputNum(0);
-    keypad.appendChild(delKey);
+    const uKey = document.createElement("button"); uKey.className = "key"; uKey.textContent = "⎌";
+    uKey.onclick = undo; keypad.appendChild(uKey);
+
+    const hKey = document.createElement("button"); hKey.className = "key"; hKey.textContent = `💡 (${state.hintsLeft})`;
+    hKey.onclick = useHint; keypad.appendChild(hKey);
+
+    const dKey = document.createElement("button"); dKey.className = "key"; dKey.textContent = "⌫";
+    dKey.onclick = () => inputNum(0); keypad.appendChild(dKey);
+
+    const xKey = document.createElement("button"); xKey.className = "key"; xKey.textContent = "✕";
+    xKey.onclick = () => { stopTimer(); state.screen = "menu"; render(); }; keypad.appendChild(xKey);
 
     app.appendChild(keypad);
-
-    // Zurück Button
-    const back = document.createElement("button");
-    back.className = "menu-btn";
-    back.style.marginTop = "20px";
-    back.textContent = "← HAUPTMENÜ";
-    back.onclick = () => { clearInterval(state.timerInterval); state.screen = "menu"; render(); };
-    app.appendChild(back);
-    
     updateTimerUi();
+  } 
+  
+  else if(state.screen === "victory") {
+    const ov = document.createElement("div"); ov.className = "overlay";
+    const m = Math.floor(state.seconds/60), s = state.seconds%60;
+    ov.innerHTML = `
+      <div style="font-size:40px; margin-bottom:10px;">🏆</div>
+      <div class="overlay-title" style="color:#eab308;">RÄTSEL GELÖST!</div>
+      <div style="font-size:12px; opacity:0.8; margin-bottom:5px;">Zeit: ${m}:${s.toString().padStart(2,'0')}</div>
+      ${state.newBest ? '<div style="color:#22c55e; font-size:11px; font-weight:bold; margin-bottom:10px;">🎉 NEUE BESTZEIT!</div>':''}
+      <div style="font-size:12px; margin-top:5px;">+${state.xpGain} XP erhalten</div>
+      <div class="xp-bar-bg"><div class="xp-bar-fill" id="victory-xp-bar"></div></div>
+    `;
+    
+    if(state.levelUpResult && state.levelUpResult.leveledUp) {
+      ov.innerHTML += `<div class="levelup-badge">LEVEL UP! ➔ LVL ${state.levelUpResult.newLevel}</div>`;
+    }
+
+    const cBtn = document.createElement("button"); cBtn.className = "overlay-btn"; cBtn.textContent = "WEITER";
+    cBtn.onclick = () => { state.screen = "menu"; render(); }; ov.appendChild(cBtn);
+    app.appendChild(ov);
+
+    setTimeout(() => {
+      const bar = document.getElementById("victory-xp-bar");
+      if(bar) bar.style.width = `${(pdata.xp / xpForLevel(pdata.level))*100}%`;
+    }, 100);
+
+    // Konfetti Regen
+    for(let i=0; i<60; i++) {
+      const conf = document.createElement("div"); conf.className = "confetti";
+      conf.style.left = Math.random()*100 + "vw"; conf.style.top = "-10px";
+      conf.style.backgroundColor = ["#eab308","#3b82f6","#22c55e","#ef4444","#ec4899"][Math.floor(Math.random()*5)];
+      document.body.appendChild(conf);
+      
+      let y = -10, x = parseFloat(conf.style.left), speed = 2 + Math.random()*3;
+      const anim = setInterval(() => {
+        y += speed; x += Math.sin(y*0.05); conf.style.top = y + "px"; conf.style.left = x + "vw";
+        if(y > window.innerHeight) { clearInterval(anim); conf.remove(); }
+      }, 20);
+    }
   }
+}
+
+function renderThemePanel() {
+  const panel = document.createElement("div"); panel.className = "theme-panel";
+  const colors = { dark: "#0f172a", light: "#cbd5e1", sepia: "#d9c59d", mint: "#a5d6a7", neon: "#00ffff" };
+  THEMES.forEach(t => {
+    const dot = document.createElement("div"); dot.className = "theme-dot";
+    dot.dataset.theme = t; dot.style.backgroundColor = colors[t];
+    if(t === currentTheme) dot.classList.add("active");
+    dot.onclick = () => setTheme(t); panel.appendChild(dot);
+  });
+  app.appendChild(panel);
 }
 
 // Keyboard Listener
@@ -305,6 +485,8 @@ window.addEventListener("keydown", e => {
   else if(e.key === "n" || e.key === "N") { state.noteMode = !state.noteMode; render(); }
 });
 
+loadProfile();
+setTheme(currentTheme);
 render();
 </script>
 </body>
