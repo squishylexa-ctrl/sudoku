@@ -540,7 +540,10 @@ window.addEventListener("keydown", e => {
   else if (e.key === "n" || e.key === "N") { state.noteMode = !state.noteMode; render(); }
 });
 
-applyStyle(THEMES[state.themeName]); render();
+window.onload = () => {
+  applyStyle(THEMES[state.themeName]); 
+  render();
+};
 </script>
 </body>
 </html>
