@@ -61,4 +61,4 @@ function isCageDone(cage, grid) {
     s += grid[r][c];
   }
   return s === cage.sum;
-}
+} // <-- Diese Klammer hat gefehlt!
