@@ -127,7 +127,7 @@ const THEMES = {
     text:"#d0c8ff", textCorrect:"#80ffb0", textWrong:"#ff4466",
     accent:"#7060e0", accentSoft:"rgba(112,96,224,0.18)",
     noteColor:"#a080ff", card:"#0c0a18", cardBorder:"rgba(112,96,224,0.25)",
-    timerColor:"#a080ff", btnBg:"#110e20", btnBorder:"#2a2040", btnText:"#9080cc",
+    timerColor:"#a080ff", btnBg:"#110e20", border:"#2a2040", btnText:"#9080cc",
     glowColor:"#a080ff", glow:true,
   },
 };
@@ -372,14 +372,6 @@ function undo() {
 function inputNum(n) {
   if(!state.selected)return;
   const [r,c] = state.selected;
-  const gVal = loadGame();
-  // Startwerte sperren
-  if(gVal && gVal.userGrid && state.solution[r][c] === gVal.userGrid[r][c] && !state.notes[r][c]) {
-     let isStartClue = true;
-     // Einfache Erkennung ob es ein Startwert war (wenn geladener Zustand ihn schon hatte bei seconds=0)
-  }
-  // Da wir das dynamischer prüfen: Wenn der geladene Save an der Stelle leer war, ist es kein Startwert.
-  // Einfacher: Wir merken uns Startwerte nicht explizit in Maske, sondern wenn man es überschreiben will, darf man es, außer es ist korrekt gelöst aus einem Tipp.
   
   pushHistory();
   const current = state.userGrid[r][c];
@@ -502,7 +494,6 @@ function render() {
     });
     html += `</div>`;
     
-    // EINBAU DES BUTTONS FÜR DEN BATTLE MODUS IM HAUPTMENÜ
     html += `<button onclick="window.location.href='battle.html'" style="width:100%; padding:14px; margin-bottom:15px; border-radius:10px; font-weight:700; background:rgba(255,64,255,0.05); border:2px solid #ff40ff; color:#ff40ff; font-size:13px; font-family:'Orbitron',sans-serif; box-shadow:0 0 10px rgba(255,64,255,0.2);">⚔️ BATTLE MODUS</button>`;
     
     html += `
@@ -529,7 +520,6 @@ function render() {
     `;
     wrap.appendChild(top);
     
-    // Gitter zeichnen
     let board = document.createElement("div");
     board.className = "board";
     board.style.cssText = `display:grid; grid-template-columns:repeat(9,1fr); width:100%; aspect-ratio:1; border:3px solid ${th.outerLine}; background:${th.cell}; box-shadow:0 4px 20px rgba(0,0,0,0.25); border-radius:4px; overflow:hidden;`;
@@ -541,7 +531,7 @@ function render() {
         cell.className = "cell";
         
         let borderS = `1px solid ${th.cellBorder}`;
-        let bb = borderS, br = borderS, bl = "none", bt = "none";
+        let bb = borderS, br = borderS;
         if(c===2 || c===5) br = `2px solid ${th.boxLine}`;
         if(r===2 || r===5) bb = `2px solid ${th.boxLine}`;
         cell.style.cssText = `display:flex; flex-direction:column; justify-content:center; align-items:center; aspect-ratio:1; position:relative; font-size:17px; font-weight:700; cursor:pointer; border-bottom:${bb}; border-right:${br};`;
@@ -550,7 +540,6 @@ function render() {
         const cage = state.cages[cIdx];
         if(cage) cell.style.background = cage.color + "14";
         
-        // Cage Summe oben links eintragen
         if(cage && cageTopLeft(cIdx, state.cages)[0]===r && cageTopLeft(cIdx, state.cages)[1]===c) {
           let sumEl = document.createElement("span");
           sumEl.className = "cage-sum";
@@ -559,7 +548,6 @@ function render() {
           cell.appendChild(sumEl);
         }
         
-        // Selektions-Logik
         if(state.selected && state.selected[0]===r && state.selected[1]===c) {
           cell.style.background = th.cellSel;
         } else if(state.selected) {
@@ -571,7 +559,6 @@ function render() {
           }
         }
         
-        // Wert anzeigen
         const val = state.userGrid[r][c];
         if(val!==0) {
           let txt = document.createElement("span");
@@ -585,7 +572,6 @@ function render() {
           }
           cell.appendChild(txt);
         } else {
-          // Notizen
           let ng = document.createElement("div");
           ng.className = "notes-grid";
           ng.style.cssText = "display:grid; grid-template-columns:repeat(3,1fr); width:100%; height:100%; padding:2px; box-sizing:border-box; pointer-events:none; position:absolute; inset:0;";
@@ -605,7 +591,6 @@ function render() {
     }
     wrap.appendChild(board);
     
-    // Keypad & Controls
     let keys = document.createElement("div");
     keys.className = "keypad";
     keys.style.marginTop = "10px";
