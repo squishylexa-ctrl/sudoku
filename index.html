@@ -310,6 +310,7 @@ function pushHistory() {
   if(state.history.length > 30) state.history.shift();
 }
 
+// ── INPUT & LOGIK ──────────────────────────────────────────────────
 function undo() {
   if(!state.history.length) return; const prev = state.history.pop(); state.userGrid = prev.grid; state.notes = prev.notes;
   state.cages.forEach((c, i) => { if(isCageDone(c, state.userGrid)) state.completedCages.add(i); else state.completedCages.delete(i); });
@@ -348,6 +349,13 @@ function giveHint() {
   pushHistory(); state.userGrid[r][c] = state.solution[r][c]; state.notes[r][c].clear(); state.usedHints = true;
   state.cages.forEach((cage, idx) => { if(!state.completedCages.has(idx) && isCageDone(cage, state.userGrid)) state.completedCages.add(idx); });
   render(); saveCurrentState(); checkWin();
+}
+
+function checkWin() {
+  for(let r=0;r<9;r++) { for(let c=0;c<9;c++) { if(state.userGrid[r][c] !== state.solution[r][c]) return; } }
+  stopTimer(); localStorage.removeItem("ks_save");
+  const gain = calcXpGain(state.difficulty, state.seconds, state.usedHints, state.hadErrors); const res = addXP(gain.total); recordWin(state.difficulty, state.seconds);
+  state.screen = "victory"; state.victoryLayout = { gain, res }; render(); spawnConfetti();
 }
 
 // ── UI RENDERING ───────────────────────────────────────────────────
@@ -390,6 +398,7 @@ function render() {
     });
     html += `</div>`;
     
+    // DER BUTTON FÜR DEN BATTLE MODUS IM HAUPTMENÜ
     html += `<button onclick="window.location.href='battle.html'" style="width:100%; padding:14px; margin-bottom:15px; border-radius:10px; font-weight:700; background:rgba(255,64,255,0.05); border:2px solid #ff40ff; color:#ff40ff; font-size:13px; font-family:'Orbitron',sans-serif; box-shadow:0 0 10px rgba(255,64,255,0.2);">⚔️ BATTLE MODUS</button>`;
 
     html += `<button id="btn-settings" style="width:100%; padding:11px; border-radius:8px; background:transparent; border:1px solid ${th.btnBorder}; color:${th.btnText}; font-size:11px; font-weight:700;">⚙️ Einstellungen & Daten</button>`;
@@ -546,7 +555,7 @@ window.addEventListener("keydown", e => {
   else if (e.key === "n" || e.key === "N") { state.noteMode = !state.noteMode; render(); }
 });
 
-// Starten, sobald die defer-Skripte komplett bereit sind
+// Starten, sobald alles (auch die defer-Engine) geladen ist
 window.addEventListener("DOMContentLoaded", () => {
   applyStyle(THEMES[state.themeName]);
   render();
