@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Neo Sudoku</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="sudoku-engine.js" defer></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { width: 100%; height: 100%; overflow: hidden; font-family: Georgia, 'Times New Roman', serif; }
@@ -74,7 +75,6 @@
 <canvas id="particle-canvas"></canvas>
 <div id="app"></div>
 
-<script src="sudoku-engine.js"></script>
 <script>
 // ── KONSTANTEN & DEFAULTS ──────────────────────────────────────────
 const THEMES = {
@@ -343,6 +343,13 @@ function inputNum(n) {
   render(); saveCurrentState(); checkWin();
 }
 
+function giveHint() {
+  if(!state.selected) return; const [r, c] = state.selected; if(state.userGrid[r][c] === state.solution[r][c]) return;
+  pushHistory(); state.userGrid[r][c] = state.solution[r][c]; state.notes[r][c].clear(); state.usedHints = true;
+  state.cages.forEach((cage, idx) => { if(!state.completedCages.has(idx) && isCageDone(cage, state.userGrid)) state.completedCages.add(idx); });
+  render(); saveCurrentState(); checkWin();
+}
+
 // ── UI RENDERING ───────────────────────────────────────────────────
 const app = document.getElementById("app");
 
@@ -383,7 +390,6 @@ function render() {
     });
     html += `</div>`;
     
-    // DER BUTTON FÜR DEN BATTLE MODUS IM HAUPTMENÜ
     html += `<button onclick="window.location.href='battle.html'" style="width:100%; padding:14px; margin-bottom:15px; border-radius:10px; font-weight:700; background:rgba(255,64,255,0.05); border:2px solid #ff40ff; color:#ff40ff; font-size:13px; font-family:'Orbitron',sans-serif; box-shadow:0 0 10px rgba(255,64,255,0.2);">⚔️ BATTLE MODUS</button>`;
 
     html += `<button id="btn-settings" style="width:100%; padding:11px; border-radius:8px; background:transparent; border:1px solid ${th.btnBorder}; color:${th.btnText}; font-size:11px; font-weight:700;">⚙️ Einstellungen & Daten</button>`;
@@ -540,10 +546,11 @@ window.addEventListener("keydown", e => {
   else if (e.key === "n" || e.key === "N") { state.noteMode = !state.noteMode; render(); }
 });
 
-window.onload = () => {
-  applyStyle(THEMES[state.themeName]); 
+// Starten, sobald die defer-Skripte komplett bereit sind
+window.addEventListener("DOMContentLoaded", () => {
+  applyStyle(THEMES[state.themeName]);
   render();
-};
+});
 </script>
 </body>
 </html>
