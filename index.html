@@ -7,8 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { width: 100%; height: 100%; overflow: hidden; font-family: Georgia, 'Times New Roman', serif; }
-  body.neon-theme { font-family: 'Orbitron', sans-serif; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Orbitron', sans-serif; background: #080610; color: #d0c8ff; }
   #app { position: fixed; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow-y:auto; }
   button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   button:active { opacity: 0.75; }
@@ -20,976 +19,292 @@
     60%{transform:translateX(-3px)}
     80%{transform:translateX(3px)}
   }
-  .shake { animation: shake 0.4s ease; }
+  .shake { animation: shake 0.3s; }
 
-  @keyframes cagePop {
-    0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)}
-  }
-  .cage-pop { animation: cagePop 0.35s ease; }
-
-  .card {
-    border-radius: 20px;
-    padding: 28px 32px;
-    width: 88%;
-    max-width: 360px;
-    max-height: 90vh;
-    overflow-y: auto;
-    margin: auto;
+  /* Scanlines */
+  body::after {
+    content: ''; position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px);
+    pointer-events: none; z-index: 999;
   }
 
-  #particle-canvas {
-    position: fixed; top:0; left:0;
-    pointer-events: none; z-index: 9999;
-    width: 100vw; height: 100vh;
-  }
+  .menu-title { font-size: 32px; font-weight: 900; text-align: center; margin-bottom: 30px; letter-spacing: 2px; color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+  .menu-btn { width: 220px; padding: 12px; margin: 8px; font-size: 14px; font-weight: 700; background: rgba(0,255,255,0.05); border: 2px solid #00ffff; color: #00ffff; border-radius: 4px; box-shadow: 0 0 10px rgba(0,255,255,0.2); transition: all 0.2s; }
+  .menu-btn:hover { background: #00ffff; color: #080610; box-shadow: 0 0 20px #00ffff; }
+  
+  .battle-btn { border-color: #ff40ff; color: #ff40ff; box-shadow: 0 0 10px rgba(255,64,255,0.2); }
+  .battle-btn:hover { background: #ff40ff; color: #080610; box-shadow: 0 0 20px #ff40ff; }
 
-  @keyframes xpFloat {
-    0%   { opacity:1; transform: translateY(0) scale(1); }
-    60%  { opacity:1; transform: translateY(-28px) scale(1.1); }
-    100% { opacity:0; transform: translateY(-50px) scale(0.9); }
-  }
-  .xp-float { animation: xpFloat 1.4s ease forwards; pointer-events:none; }
+  /* Sudoku Feld */
+  .board { display: grid; grid-template-columns: repeat(9, 1fr); width: 100%; max-width: 420px; aspect-ratio: 1; border: 3px solid #00ffff; background: #0c091f; box-shadow: 0 0 20px rgba(0,255,255,0.15); margin: 15px 0; }
+  .cell { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; aspect-ratio: 1; border: 1px solid rgba(0,255,255,0.15); font-size: 18px; font-weight: 700; color: #ffffff; cursor: pointer; }
+  
+  /* 3x3 Block-Grenzen */
+  .cell:nth-child(3n) { border-right: 2px solid #00ffff; }
+  .cell:nth-child(9n) { border-right: none; }
+  .board > .cell:nth-child(n+19):nth-child(-n+27),
+  .board > .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #00ffff; }
 
-  @keyframes barFill {
-    from { width: var(--from); }
-    to   { width: var(--to); }
-  }
-  .bar-fill { animation: barFill 0.8s cubic-bezier(.4,0,.2,1) forwards; }
+  .cell.selected { background: rgba(0,255,255,0.25) !important; box-shadow: inset 0 0 8px #00ffff; }
+  .cell.same-num { background: rgba(0,255,255,0.1); }
+  .cell.err { color: #ff4444; text-shadow: 0 0 5px #ff4444; background: rgba(255,68,68,0.15); }
 
-  @keyframes levelUp {
-    0%  { opacity:0; transform:scale(0.6) translateY(20px); }
-    50% { opacity:1; transform:scale(1.08) translateY(-4px); }
-    100%{ opacity:1; transform:scale(1) translateY(0); }
-  }
-  .level-up-anim { animation: levelUp 0.6s cubic-bezier(.4,0,.2,1) forwards; }
+  /* Cage Summen */
+  .cage-sum { position: absolute; top: 1px; left: 2px; font-size: 8px; font-weight: 400; opacity: 0.8; pointer-events: none; }
 
-  @keyframes pulse {
-    0%,100%{ box-shadow: 0 0 0 0 rgba(255,215,0,0.5); }
-    50%    { box-shadow: 0 0 0 8px rgba(255,215,0,0); }
-  }
-  .pulse { animation: pulse 1s ease 3; }
+  /* Notizen */
+  .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; height: 100%; padding: 2px; pointer-events: none; }
+  .note-cell { display: flex; align-items: center; justify-content: center; font-size: 7px; color: #8899af; font-weight: 400; }
+
+  /* Keypad */
+  .keypad { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; max-width: 420px; gap: 6px; padding: 0 10px; margin-top: 10px; }
+  .key { padding: 12px 0; font-size: 16px; font-weight: 700; background: rgba(0,255,255,0.03); border: 1px solid rgba(0,255,255,0.3); color: #00ffff; border-radius: 4px; text-align: center; }
+  .key:hover { background: rgba(0,255,255,0.1); }
+  .key.active { background: #00ffff; color: #080610; box-shadow: 0 0 10px #00ffff; }
+
+  /* Top Bar */
+  .top-bar { display: flex; justify-content: space-between; width: 100%; max-width: 420px; padding: 0 10px; font-size: 12px; font-weight: 700; color: #8b9bb4; }
+  
+  .theme-panel { display: flex; gap: 5px; margin-top: 15px; }
+  .theme-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+  .theme-dot.active { border-color: #ffffff; }
 </style>
 </head>
 <body>
-<canvas id="particle-canvas"></canvas>
+
 <div id="app"></div>
 
-<script src="sudoku-engine.js"></script>
 <script>
-// ── KONSTANTEN & ENGINE ────────────────────────────────────────────
-// (ausgelagert in sudoku-engine.js)
+// ── ENGINE LOGIK DIREKT INTEGRIERT ──────────────────────────────
+const CAGE_COLORS = ["rgba(255,107,107,0.07)","rgba(255,169,77,0.07)","rgba(38,208,160,0.07)","rgba(91,164,207,0.07)","rgba(180,122,224,0.07)"];
 
+function generateSolution() {
+  const g = Array.from({length:9}, () => Array(9).fill(0));
+  const ok = (r,c,n) => {
+    for(let i=0;i<9;i++) if(g[r][i]===n||g[i][c]===n) return false;
+    const br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    for(let i=0;i<3;i++) for(let j=0;j<3;j++) if(g[br+i][bc+j]===n) return false;
+    return true;
+  };
+  const solve = pos => {
+    if(pos===81) return true;
+    const r=Math.floor(pos/9), c=pos%9;
+    const nums=[1,2,3,4,5,6,7,8,9].sort(()=>Math.random()-0.5);
+    for(let n of nums) {
+      if(ok(r,c,n)) { g[r][c]=n; if(solve(pos+1)) return true; g[r][c]=0; }
+    }
+    return false;
+  };
+  solve(0); return g;
+}
 
-const THEMES = {
-  dunkel: {
-    label:"🌙 Dunkel", bg:"#0d0d1a", bgGrad:"linear-gradient(135deg,#0d0d1a 0%,#140a20 50%,#0a1520 100%)",
-    cell:"#13131f", cellSel:"#1e3a5f", cellSameNum:"#1e3d30", cellSameGroup:"#1a1a2e",
-    cellBorder:"#252535", boxLine:"#555566", outerLine:"#aaaacc",
-    text:"#e0e0e0", textCorrect:"#b8f0b8", textWrong:"#ff5555",
-    accent:"#e63946", accentSoft:"rgba(230,57,70,0.15)",
-    noteColor:"#9b9bf0", card:"#13131f", cardBorder:"rgba(255,255,255,0.1)",
-    timerColor:"#a0c4ff", btnBg:"#1a1a2e", btnBorder:"#2a2a3e", btnText:"#aaaacc",
-    glowColor:"#a0c4ff", glow:true,
-  },
-  hell: {
-    label:"☀️ Hell", bg:"#e8eeff", bgGrad:"linear-gradient(135deg,#e8eeff 0%,#f0e8ff 50%,#e8f4ff 100%)",
-    cell:"#ffffff", cellSel:"#bdd4ff", cellSameNum:"#c0f0d0", cellSameGroup:"#e8eeff",
-    cellBorder:"#c0c8e0", boxLine:"#7788bb", outerLine:"#334466",
-    text:"#1a1a2e", textCorrect:"#1a5e30", textWrong:"#cc1122",
-    accent:"#e63946", accentSoft:"rgba(230,57,70,0.1)",
-    noteColor:"#4444cc", card:"#ffffff", cardBorder:"rgba(80,100,200,0.2)",
-    timerColor:"#2244aa", btnBg:"#eef0ff", btnBorder:"#c0c8e0", btnText:"#445",
-    glowColor:"#5577ff", glow:true,
-  },
-  sepia: {
-    label:"📜 Sepia", bg:"#1a1005", bgGrad:"linear-gradient(135deg,#1a1005 0%,#221508 50%,#1a1005 100%)",
-    cell:"#140d04", cellSel:"#3d2a10", cellSameNum:"#2a2e10", cellSameGroup:"#1e1608",
-    cellBorder:"#3a2a14", boxLine:"#7a6040", outerLine:"#c8a060",
-    text:"#e8d5a0", textCorrect:"#a8d890", textWrong:"#e85030",
-    accent:"#d4820a", accentSoft:"rgba(212,130,10,0.18)",
-    noteColor:"#c0a060", card:"#1a1005", cardBorder:"rgba(200,160,80,0.25)",
-    timerColor:"#d4b070", btnBg:"#1e1408", btnBorder:"#3a2a14", btnText:"#c8a060",
-    glowColor:"#d4a030", glow:true,
-  },
-  mint: {
-    label:"🌿 Mint", bg:"#071a12", bgGrad:"linear-gradient(135deg,#071a12 0%,#0a2018 50%,#071510 100%)",
-    cell:"#0a1a10", cellSel:"#0e3d28", cellSameNum:"#1a3d10", cellSameGroup:"#0e2018",
-    cellBorder:"#1a3020", boxLine:"#407060", outerLine:"#60c090",
-    text:"#c8f0d8", textCorrect:"#80ff80", textWrong:"#ff6060",
-    accent:"#2a9d6f", accentSoft:"rgba(42,157,111,0.18)",
-    noteColor:"#60d0a0", card:"#071a12", cardBorder:"rgba(80,200,140,0.2)",
-    timerColor:"#60d0a0", btnBg:"#0e2018", btnBorder:"#1a3020", btnText:"#a0d8b8",
-    glowColor:"#52e07c", glow:true,
-  },
-  neon: {
-    label:"⚡ Neon", bg:"#080610", bgGrad:"radial-gradient(ellipse at 30% 20%, #1a1035 0%, #080610 60%, #0a0618 100%)",
-    cell:"#0e0c1a", cellSel:"#1a0e3a", cellSameNum:"#0e2a1a", cellSameGroup:"#110e20",
-    cellBorder:"#1e1a30", boxLine:"rgba(130,110,220,0.55)", outerLine:"#7060e0",
-    text:"#d0c8ff", textCorrect:"#80ffb0", textWrong:"#ff4466",
-    accent:"#7060e0", accentSoft:"rgba(112,96,224,0.18)",
-    noteColor:"#a080ff", card:"#0c0a18", cardBorder:"rgba(112,96,224,0.25)",
-    timerColor:"#a080ff", btnBg:"#110e20", btnBorder:"#2a2040", btnText:"#9080cc",
-    glowColor:"#a080ff", glow:true,
-  },
+function makeCages(sol, diff) {
+  const cages = []; const done = Array.from({length:9}, () => Array(9).fill(false));
+  let target = diff === "Einfach" ? 35 : diff === "Normal" ? 45 : diff === "Schwer" ? 55 : 65;
+  
+  for(let r=0; r<9; r++) {
+    for(let c=0; c<9; c++) {
+      if(done[r][c]) continue;
+      const cage = [[r,c]]; done[r][c]=true;
+      let size = Math.floor(Math.random()*3)+1;
+      while(cage.length < size) {
+        const [lr,lc] = cage[cage.length-1];
+        const nb = [[lr-1,lc],[lr+1,lc],[lr,lc-1],[lr,lc+1]]
+          .filter(([cr,cc]) => cr>=0&&cr<9&&cc>=0&&cc<9&&!done[cr][cc]);
+        if(!nb.length) break;
+        const [nr,nc] = nb[Math.floor(Math.random()*nb.length)];
+        cage.push([nr,nc]); done[nr][nc]=true;
+      }
+      const sum = cage.reduce((s,[cr,cc]) => s+sol[cr][cc], 0);
+      cages.push({cells:cage, sum, color:CAGE_COLORS[cages.length%CAGE_COLORS.length]});
+    }
+  }
+  return cages;
+}
+
+// ── SPIEL ZUSTAND ────────────────────────────────────────────────
+const state = {
+  screen: "menu", difficulty: "Normal",
+  solution: null, cages: null, cageMap: {}, userGrid: null,
+  selected: null, noteMode: false,
+  notes: Array.from({length:9},()=>Array.from({length:9},()=>new Set())),
+  seconds: 0, timerInterval: null
 };
 
-const DIFF_LABELS = { easy:"Einfach", mittel:"Mittel", schwer:"Schwer", boshaft:"Boshaft 😈" };
-const DIFFICULTIES = ["easy","mittel","schwer","boshaft"];
-
-// ── LEVEL & XP SYSTEM ─────────────────────────────────────────────
-const LEVEL_TITLES = [
-  "Neuling 🌱","Lehrling 📖","Rätsler 🔍","Denker 🤔","Kenner 🧩",
-  "Experte 🧠","Stratege ♟️","Virtuose 🎯","Meister 🏆","Großmeister ⚡",
-  "Champion 🥇","Elite 💎","Legende 👑","Mythisch 🌟","Sudoku-Gott 😈",
-];
-function getLevelTitle(l){ return LEVEL_TITLES[Math.min(l-1,LEVEL_TITLES.length-1)]; }
-function xpForLevel(l){ return Math.round(500*Math.pow(1.6,l)); }
-function calcLevel(totalXp){
-  let level=1, xp=totalXp, needed=xpForLevel(1);
-  while(xp>=needed){xp-=needed;level++;needed=xpForLevel(level);}
-  return {level,currentXp:xp,neededXp:needed};
-}
-function calcXpGain(diff,seconds,usedHints,hadErrors){
-  const base={easy:100,mittel:250,schwer:400,boshaft:600}[diff];
-  let bonus=0;
-  const target={easy:300,mittel:600,schwer:1200,boshaft:2400}[diff];
-  if(seconds<target) bonus+=Math.round(base*0.5*(1-seconds/target));
-  if(!usedHints) bonus+=100;
-  if(!hadErrors) bonus+=75;
-  return {base,bonus,total:base+bonus};
-}
-function loadXP(){ try{const s=localStorage.getItem("ks_xp");return s?JSON.parse(s):{totalXp:0};}catch{return{totalXp:0};} }
-function saveXP(d){ try{localStorage.setItem("ks_xp",JSON.stringify(d));}catch{} }
-function addXP(amount){
-  const data=loadXP();
-  const before=calcLevel(data.totalXp);
-  data.totalXp+=amount;
-  const after=calcLevel(data.totalXp);
-  saveXP(data);
-  return {before,after,levelUp:after.level>before.level,newLevel:after.level};
-}
-
-// ── PARTIKEL ───────────────────────────────────────────────────────
-const canvas = document.getElementById("particle-canvas");
-const ctx = canvas.getContext("2d");
-let particles = [];
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
-
-function animateParticles() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  particles = particles.filter(p => p.life > 0);
-  particles.forEach(p => {
-    p.x += p.vx; p.y += p.vy;
-    p.vy += p.gravity || 0.15;
-    p.vx *= 0.98;
-    p.life -= p.decay || 0.022;
-    p.rotation = (p.rotation || 0) + (p.rotSpeed || 0.1);
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, p.life);
-    ctx.translate(p.x, p.y);
-    ctx.rotate(p.rotation);
-    ctx.fillStyle = p.color;
-    if (p.type === "circle") {
-      ctx.beginPath(); ctx.arc(0, 0, p.size/2, 0, Math.PI*2); ctx.fill();
-    } else if (p.type === "star") {
-      ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const a = (i*4*Math.PI)/5 - Math.PI/2;
-        ctx.lineTo(Math.cos(a)*p.size, Math.sin(a)*p.size);
-        const a2 = a + Math.PI/5;
-        ctx.lineTo(Math.cos(a2)*p.size*0.4, Math.sin(a2)*p.size*0.4);
-      }
-      ctx.closePath(); ctx.fill();
-    } else {
-      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
-    }
-    ctx.restore();
-  });
-  requestAnimationFrame(animateParticles);
-}
-animateParticles();
-
-function spawnCageParticles(x, y, w, h, color) {
-  for (let i = 0; i < 20; i++) particles.push({
-    x: x + Math.random()*w, y: y + Math.random()*h,
-    vx: (Math.random()-0.5)*7, vy: (Math.random()-1.8)*6,
-    size: 3+Math.random()*5, color,
-    type: Math.random()>0.5?"circle":"star",
-    decay: 0.022+Math.random()*0.02, gravity: 0.13,
-    life: 1, rotation: 0, rotSpeed: (Math.random()-0.5)*0.4,
-  });
-}
-
-function spawnConfetti() {
-  const colors = ["#ff6b6b","#ffa94d","#ffe066","#69db7c","#4cc9f0","#da77f2","#ff9ff3","#74c0fc"];
-  for (let i = 0; i < 160; i++) particles.push({
-    x: Math.random()*window.innerWidth, y: -20-Math.random()*100,
-    vx: (Math.random()-0.5)*5, vy: 2+Math.random()*4,
-    size: 6+Math.random()*9, color: colors[Math.floor(Math.random()*colors.length)],
-    type: Math.random()>0.5?"square":"circle",
-    decay: 0.005+Math.random()*0.004, gravity: 0.05,
-    life: 1, rotation: Math.random()*Math.PI*2, rotSpeed: (Math.random()-0.5)*0.2,
-  });
-}
-
-// ── STATISTIK & SPEICHERN ──────────────────────────────────────────
-function loadStats() {
-  try { const s=localStorage.getItem("ks_stats"); return s?JSON.parse(s):{easy:{count:0,best:null},mittel:{count:0,best:null},schwer:{count:0,best:null},boshaft:{count:0,best:null}}; }
-  catch { return {easy:{count:0,best:null},mittel:{count:0,best:null},schwer:{count:0,best:null},boshaft:{count:0,best:null}}; }
-}
-function saveStats(s) { try{localStorage.setItem("ks_stats",JSON.stringify(s));}catch{} }
-function recordWin(diff, secs) {
-  const stats=loadStats();
-  stats[diff].count++;
-  if(stats[diff].best===null||secs<stats[diff].best) stats[diff].best=secs;
-  saveStats(stats); return stats;
-}
-function loadGame() { try{const s=localStorage.getItem("ks_save");return s?JSON.parse(s):null;}catch{return null;} }
-function saveGame(s) { try{localStorage.setItem("ks_save",JSON.stringify(s));}catch{} }
-function loadCfg() { try{const s=localStorage.getItem("ks_cfg");return s?JSON.parse(s):null;}catch{return null;} }
-function saveCfg(s) { try{localStorage.setItem("ks_cfg",JSON.stringify(s));}catch{} }
-
-function exportData() {
-  const data={version:1,exportDate:new Date().toISOString(),stats:loadStats(),save:loadGame(),settings:loadCfg(),xp:loadXP()};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download=`neosudoku-${new Date().toLocaleDateString("de")}.json`;
-  a.click(); URL.revokeObjectURL(url);
-}
-function importData(file, cb) {
-  const r=new FileReader();
-  r.onload=e=>{
-    try {
-      const d=JSON.parse(e.target.result);
-      if(d.stats)saveStats(d.stats);
-      if(d.save)localStorage.setItem("ks_save",JSON.stringify(d.save));
-      if(d.settings)saveCfg(d.settings);
-      if(d.xp)saveXP(d.xp);
-      cb(true);
-    } catch{cb(false);}
-  };
-  r.readAsText(file);
-}
-
-const fmt=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
-
-// ── STATE ──────────────────────────────────────────────────────────
-const cfg0=loadCfg()||{};
-let state = {
-  screen: "menu",
-  difficulty: "mittel",
-  themeName: cfg0.themeName||"neon",
-  showTimer: cfg0.showTimer??true,
-  showErrors: cfg0.showErrors??true,
-  solution: null, cages: [], cageMap: {}, userGrid: null,
-  notes: null, history: [], selected: null, noteMode: false,
-  seconds: 0, timerRunning: false, hintsLeft: 3,
-  completedCages: new Set(), newBest: false, importMsg: "",
-  cellSize: 40, actionBtnH: 60,
-  // XP/Level
-  xpGain: null, levelUpResult: null, hadErrors: false, usedHints: false,
-};
-
-let timerInterval = null;
-function startTimer(){
-  if(timerInterval)clearInterval(timerInterval);
-  timerInterval=setInterval(()=>{ state.seconds++; renderTimerOnly(); },1000);
-  state.timerRunning=true;
-}
-function stopTimer(){ clearInterval(timerInterval); timerInterval=null; state.timerRunning=false; }
-
-function calcDims(){
-  const vw=window.innerWidth,vh=window.innerHeight;
-  const headerH=52,bannerH=24,numpadH=50,actionH=68,gaps=24,pad=16;
-  const avail=vh-headerH-bannerH-numpadH-actionH-gaps-pad;
-  const byH=Math.floor(avail/9),byW=Math.floor(vw*0.97/9);
-  state.cellSize=Math.min(byH,byW);
-  state.actionBtnH=actionH;
-}
-calcDims();
-window.addEventListener("resize",()=>{ calcDims(); if(state.screen==="game") renderGame(); });
-
-// ── RENDER ─────────────────────────────────────────────────────────
-const app=document.getElementById("app");
-function el(tag,attrs={},children=[]){
-  const e=document.createElement(tag);
-  Object.entries(attrs).forEach(([k,v])=>{
-    if(k==="style"&&typeof v==="object") Object.assign(e.style,v);
-    else if(k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(),v);
-    else e.setAttribute(k,v);
-  });
-  children.forEach(c=>{ if(c==null)return; e.appendChild(typeof c==="string"?document.createTextNode(c):c); });
-  return e;
-}
-
-function T(){ return THEMES[state.themeName]; }
-
-function applyBg(elem){
-  elem.style.background=T().bgGrad;
-  elem.style.backgroundColor=T().bg;
-  elem.style.color=T().text;
-}
-
-function renderTimerOnly(){
-  const td=document.getElementById("timer-display");
-  if(td) td.textContent=`⏱ ${fmt(state.seconds)}`;
-}
-
-function render(){ 
-  app.innerHTML="";
-  applyBg(app);
-  document.body.classList.add("neon-theme");
-  if(state.screen==="menu") renderMenu();
-  else if(state.screen==="game") renderGame();
-  else if(state.screen==="won") renderWon();
-  else if(state.screen==="stats") renderStats();
-  else if(state.screen==="options") renderOptions();
-}
-
-function makeCard(){ 
-  const d=document.createElement("div");
-  d.className="card";
-  Object.assign(d.style,{background:T().card,border:`1px solid ${T().cardBorder}`,color:T().text});
-  return d;
-}
-
-function ghostBtn(label,onclick){
-  const neon=T().glow; const gc=T().glowColor||"#a080ff";
-  const b=el("button",{style:{background:neon?`${gc}18`:"transparent",border:`1px solid ${neon?gc:T().btnBorder}`,color:neon?gc:T().btnText,padding:"5px 10px",borderRadius:"7px",fontSize:"12px",textShadow:neon?`0 0 8px ${gc}`:"none",boxShadow:neon?`0 0 8px ${gc}50`:"none"}});
-  b.textContent=label; b.onclick=onclick; return b;
-}
-function primaryBtn(label,onclick){
-  const neon=T().glow; const gc=T().glowColor||"#a080ff";
-  const b=el("button",{style:{width:"100%",padding:"12px",marginBottom:"8px",background:neon?`linear-gradient(135deg,${gc}cc,${gc})`:T().accent,color:"#fff",border:neon?`1px solid ${gc}`:"none",borderRadius:"12px",fontSize:"14px",fontWeight:"700",boxShadow:neon?`0 0 16px ${gc}80`:"none",textShadow:neon?`0 0 8px #fff`:"none"}});
-  b.textContent=label; b.onclick=onclick; return b;
-}
-function secondaryBtn(label,onclick){
-  const neon=T().glow; const gc=T().glowColor||"#a080ff";
-  const b=el("button",{style:{width:"100%",padding:"10px",marginBottom:"8px",background:neon?`${gc}10`:"transparent",color:neon?gc:T().timerColor,border:`1px solid ${neon?`${gc}60`:T().btnBorder}`,borderRadius:"12px",fontSize:"13px",textShadow:neon?`0 0 8px ${gc}`:"none"}});
-  b.textContent=label; b.onclick=onclick; return b;
-}
-function choiceBtn(label,active,onclick){
-  const b=el("button",{style:{padding:"9px 6px",borderRadius:"9px",fontSize:"12px",transition:"all 0.12s",background:active?T().accentSoft:T().btnBg,border:`1px solid ${active?T().accent:T().btnBorder}`,color:active?T().text:T().btnText}});
-  b.textContent=label; b.onclick=onclick; return b;
-}
-function label(text){
-  const p=document.createElement("p");
-  Object.assign(p.style,{margin:"0 0 8px",fontSize:"10px",color:T().btnText,textTransform:"uppercase",letterSpacing:"2px"});
-  p.textContent=text; return p;
-}
-
-// ── MENÜ ──────────────────────────────────────────────────────────
-function renderMenu(){
-  const stats=loadStats();
-  const total=DIFFICULTIES.reduce((s,d)=>s+stats[d].count,0);
-  const card=makeCard();
-
-  // Titel
-  const titleDiv=el("div",{style:{textAlign:"center"}});
-  const xpData=loadXP();
-  const lvl=calcLevel(xpData.totalXp);
-  const pct=Math.round((lvl.currentXp/lvl.neededXp)*100);
-  const isNeon = T().glow;
-  const gc = T().glowColor||"#a080ff";
-  titleDiv.innerHTML=`<div style="font-size:44px;margin-bottom:4px">🧩</div>
-    <h1 style="font-size:28px;font-weight:700;color:${isNeon?gc:T().text};margin:0 0 2px;${isNeon?`text-shadow:0 0 12px ${gc}, 0 0 24px ${gc}80`:""}"">Neo Sudoku</h1>
-    ${total>0?`<div style="font-size:12px;color:${T().btnText};margin-bottom:4px">🏆 ${total} Rätsel gelöst</div>`:""}
-    <div style="width:40px;height:2px;background:${isNeon?gc:T().accent};margin:8px auto 12px;border-radius:2px;${isNeon?`box-shadow:0 0 8px ${gc}`:""}"></div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;justify-content:center">
-      <span style="font-size:13px;font-weight:700;color:#ffd700;${isNeon?"text-shadow:0 0 8px #ffd700":""}">Level ${lvl.level}</span>
-      <span style="font-size:11px;color:${T().btnText}">${getLevelTitle(lvl.level)}</span>
-    </div>
-    <div style="background:${T().cellBorder};border-radius:99px;height:8px;overflow:hidden;margin-bottom:3px;width:100%">
-      <div style="height:100%;width:${pct}%;background:${isNeon?`linear-gradient(90deg,${gc},${gc}cc)`:"linear-gradient(90deg,#ffd700,#ffaa00)"};border-radius:99px;transition:width 0.6s ease;${isNeon?`box-shadow:0 0 8px ${gc}`:""}"></div>
-    </div>
-    <div style="font-size:10px;color:${T().btnText};margin-bottom:14px">${lvl.currentXp} / ${lvl.neededXp} XP</div>`;
-  card.appendChild(titleDiv);
-
-  card.appendChild(label("Schwierigkeitsgrad"));
-  const diffGrid=el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",marginBottom:"16px"}});
-  DIFFICULTIES.forEach(d=>{
-    const st=stats[d];
-    const b=choiceBtn("",state.difficulty===d,()=>{ state.difficulty=d; renderMenu(); render(); });
-    b.innerHTML=`<span>${DIFF_LABELS[d]}</span>${st.count>0?`<br><span style="font-size:9px;opacity:0.7">${st.count}× ⏱${fmt(st.best)}</span>`:""}`;
-    diffGrid.appendChild(b);
-  });
-  card.appendChild(diffGrid);
-  card.appendChild(primaryBtn("Neues Spiel",()=>startNewGame(state.difficulty)));
-  if(loadGame()) card.appendChild(secondaryBtn("Weiterspielen",continueGame));
-
-  // Battle Modus Link
-  const gc=T().glowColor||'#a080ff';
-  const battleBtn=el("button",{style:{width:"100%",padding:"11px",marginBottom:"8px",background:`${gc}12`,color:gc,border:`1px solid ${gc}50`,borderRadius:"12px",fontSize:"13px",fontWeight:"700",textShadow:`0 0 8px ${gc}`,boxShadow:`0 0 10px ${gc}20`}});
-  battleBtn.textContent="⚔️ Battle Modus";
-  battleBtn.onclick=()=>window.location.href='battle.html';
-  card.appendChild(battleBtn);
-
-  const row=el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}});
-  row.appendChild(secondaryBtn("📊 Statistik",()=>{ state.screen="stats"; render(); }));
-  const ob=secondaryBtn("⚙️ Optionen",()=>{ state.screen="options"; render(); });
-  ob.style.marginBottom="0";
-  row.appendChild(ob);
-  card.appendChild(row);
-  app.appendChild(card);
-}
-
-// ── STATISTIK ─────────────────────────────────────────────────────
-function renderStats(){
-  const card=makeCard();
-  const hdr=el("div",{style:{display:"flex",alignItems:"center",gap:"12px",marginBottom:"20px"}});
-  hdr.appendChild(ghostBtn("← Zurück",()=>{ state.screen="menu"; render(); }));
-  const h=document.createElement("h2");
-  h.textContent="📊 Statistik"; h.style.cssText=`margin:0;font-size:20px;color:${T().text}`;
-  hdr.appendChild(h); card.appendChild(hdr);
-
-  const stats=loadStats();
-  DIFFICULTIES.forEach(d=>{
-    const st=stats[d];
-    const row=el("div",{style:{background:T().btnBg,border:`1px solid ${T().btnBorder}`,borderRadius:"12px",padding:"12px 16px",marginBottom:"8px",display:"flex",justifyContent:"space-between",alignItems:"center"}});
-    row.innerHTML=`<div><div style="font-size:13px;font-weight:700;color:${T().text}">${DIFF_LABELS[d]}</div>
-      <div style="font-size:11px;color:${T().btnText};margin-top:2px">${st.count===0?"Noch nicht gespielt":`${st.count}× gelöst`}</div></div>
-      <div style="text-align:right">${st.best!==null?`<div style="font-size:10px;color:${T().btnText}">Bestzeit</div><div style="font-size:16px;color:${T().timerColor};font-family:monospace;font-weight:700">${fmt(st.best)}</div>`:`<div style="font-size:20px;color:${T().btnText}">—</div>`}</div>`;
-    card.appendChild(row);
-  });
-
-  const total=DIFFICULTIES.reduce((s,d)=>s+stats[d].count,0);
-  const tot=document.createElement("div");
-  tot.style.cssText=`margin-top:12px;text-align:center;font-size:11px;color:${T().btnText}`;
-  tot.textContent=`Gesamt: ${total} Rätsel gelöst`;
-  card.appendChild(tot);
-
-  // XP-Übersicht
-  const xpData=loadXP();
-  const lvl=calcLevel(xpData.totalXp);
-  const pct=Math.round((lvl.currentXp/lvl.neededXp)*100);
-  const xpDiv=el("div",{style:{background:T().btnBg,border:`1px solid ${T().btnBorder}`,borderRadius:"12px",padding:"12px 16px",marginTop:"10px"}});
-  xpDiv.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <span style="font-size:14px;font-weight:700;color:#ffd700">Level ${lvl.level}</span>
-      <span style="font-size:12px;color:${T().btnText}">${getLevelTitle(lvl.level)}</span>
-    </div>
-    <div style="background:${T().cellBorder};border-radius:99px;height:10px;overflow:hidden;margin-bottom:4px">
-      <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ffd700,#ffaa00);border-radius:99px"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:${T().btnText}">
-      <span>${lvl.currentXp} XP</span><span>Nächstes Level: ${lvl.neededXp} XP</span>
-    </div>
-    <div style="font-size:10px;color:${T().btnText};margin-top:4px;text-align:center">Gesamt: ${xpData.totalXp} XP</div>`;
-  card.appendChild(xpDiv);
-  app.appendChild(card);
-}
-
-// ── OPTIONEN ──────────────────────────────────────────────────────
-function renderOptions(){
-  const card=makeCard();
-  const hdr=el("div",{style:{display:"flex",alignItems:"center",gap:"12px",marginBottom:"20px"}});
-  hdr.appendChild(ghostBtn("← Zurück",()=>{ state.screen="menu"; render(); }));
-  const h=document.createElement("h2");
-  h.textContent="⚙️ Optionen"; h.style.cssText=`margin:0;font-size:20px;color:${T().text}`;
-  hdr.appendChild(h); card.appendChild(hdr);
-
-  card.appendChild(label("Farbschema"));
-  const tGrid=el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",marginBottom:"18px"}});
-  Object.entries(THEMES).forEach(([k,th])=>{
-    tGrid.appendChild(choiceBtn(th.label,state.themeName===k,()=>{ state.themeName=k; saveCfg({themeName:state.themeName,showTimer:state.showTimer,showErrors:state.showErrors}); render(); }));
-  });
-  card.appendChild(tGrid);
-
-  card.appendChild(label("Timer"));
-  const tRow=el("div",{style:{display:"flex",gap:"8px",marginBottom:"18px"}});
-  [["⏱ An",true],["🙈 Aus",false]].forEach(([lbl,v])=>{
-    const b=choiceBtn(lbl,state.showTimer===v,()=>{ state.showTimer=v; saveCfg({themeName:state.themeName,showTimer:state.showTimer,showErrors:state.showErrors}); render(); });
-    b.style.flex="1"; tRow.appendChild(b);
-  });
-  card.appendChild(tRow);
-
-  card.appendChild(label("Fehler anzeigen"));
-  const eRow=el("div",{style:{display:"flex",gap:"8px",marginBottom:"18px"}});
-  [["✓ An",true],["✗ Aus",false]].forEach(([lbl,v])=>{
-    const b=choiceBtn(lbl,state.showErrors===v,()=>{ state.showErrors=v; saveCfg({themeName:state.themeName,showTimer:state.showTimer,showErrors:state.showErrors}); render(); });
-    b.style.flex="1"; eRow.appendChild(b);
-  });
-  card.appendChild(eRow);
-
-  card.appendChild(label("Daten"));
-  const dRow=el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}});
-  dRow.appendChild(choiceBtn("💾 Exportieren",false,exportData));
-  const fileInput=el("input",{type:"file",accept:".json",style:{display:"none"}});
-  fileInput.onchange=e=>{
-    const f=e.target.files[0]; if(!f)return;
-    importData(f,ok=>{
-      const msg=document.getElementById("import-msg");
-      if(msg){ msg.textContent=ok?"✓ Erfolgreich importiert!":"✗ Fehler beim Import"; msg.style.color=ok?T().textCorrect:T().textWrong; setTimeout(()=>{msg.textContent="";},3000); }
-    });
-    e.target.value="";
-  };
-  card.appendChild(fileInput);
-  dRow.appendChild(choiceBtn("📂 Importieren",false,()=>fileInput.click()));
-  card.appendChild(dRow);
-
-  const msg=el("div",{id:"import-msg",style:{marginTop:"8px",fontSize:"12px",textAlign:"center",minHeight:"16px"}});
-  card.appendChild(msg);
-  app.appendChild(card);
-}
-
-// ── GEWONNEN ──────────────────────────────────────────────────────
-function renderWon(){
-  const stats=loadStats()[state.difficulty];
-  const xp=state.xpGain||{base:0,bonus:0,total:0};
-  const lvlResult=state.levelUpResult||calcLevel(loadXP().totalXp);
-  const after=lvlResult.after||lvlResult;
-  const pct=Math.round((after.currentXp/after.neededXp)*100);
-
-  const card=makeCard();
-  card.style.textAlign="center";
-
-  // Level-Up Banner
-  if(lvlResult.levelUp){
-    const banner=el("div",{style:{background:"linear-gradient(135deg,#ffd700,#ffaa00)",borderRadius:"12px",padding:"10px 16px",marginBottom:"12px",color:"#1a1a00",fontWeight:"700",fontSize:"15px"}});
-    banner.classList.add("level-up-anim");
-    banner.innerHTML=`⬆️ Level Up! → Level ${lvlResult.newLevel}<br><span style="font-size:12px">${getLevelTitle(lvlResult.newLevel)}</span>`;
-    card.appendChild(banner);
+function initGame(diff) {
+  state.difficulty = diff;
+  state.solution = generateSolution();
+  state.cages = makeCages(state.solution, diff);
+  state.cageMap = {};
+  state.cages.forEach((c,i) => c.cells.forEach(([cr,cc]) => { state.cageMap[`${cr},${cc}`]=i; }));
+  
+  // Spielfeld leeren basierend auf Schwierigkeit
+  state.userGrid = Array.from({length:9}, () => Array(9).fill(0));
+  let clues = diff === "Einfach" ? 40 : diff === "Normal" ? 30 : diff === "Schwer" ? 22 : 15;
+  let positions = Array.from({length:81}, (_,i)=>i).sort(()=>Math.random()-0.5);
+  for(let i=0; i<clues; i++) {
+    const r = Math.floor(positions[i]/9), c = positions[i]%9;
+    state.userGrid[r][c] = state.solution[r][c];
   }
 
-  card.innerHTML+=`<div style="font-size:56px;margin-bottom:4px">🎉</div>
-    <h1 style="font-size:28px;font-weight:700;color:${T().textCorrect};margin:0 0 4px">Gelöst!</h1>
-    ${state.showTimer?`<p style="color:${T().timerColor};font-size:17px;margin:4px 0 4px;font-family:monospace">⏱ ${fmt(state.seconds)}</p>`:""}
-    ${state.newBest?`<div style="font-size:12px;color:#ffd700;margin-bottom:4px">🥇 Neue Bestzeit!</div>`:""}
-    <div style="font-size:11px;color:${T().btnText};margin-bottom:14px">${DIFF_LABELS[state.difficulty]}: ${stats.count}× gelöst</div>`;
-
-  // XP-Gewinn Aufschlüsselung
-  const xpBox=el("div",{style:{background:T().btnBg,border:`1px solid ${T().btnBorder}`,borderRadius:"12px",padding:"12px 16px",marginBottom:"14px",textAlign:"left"}});
-  xpBox.innerHTML=`
-    <div style="font-size:11px;color:${T().btnText};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">XP erhalten</div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:${T().text};margin-bottom:4px">
-      <span>Basis (${DIFF_LABELS[state.difficulty]})</span><span style="color:${T().timerColor}">+${xp.base} XP</span>
-    </div>
-    ${xp.bonus>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:${T().text};margin-bottom:4px">
-      <span>Boni ✨</span><span style="color:#69db7c">+${xp.bonus} XP</span>
-    </div>`:""}
-    <div style="border-top:1px solid ${T().btnBorder};margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:${T().text}">
-      <span>Gesamt</span><span style="color:#ffd700">+${xp.total} XP</span>
-    </div>`;
-  card.appendChild(xpBox);
-
-  // Level & XP-Balken
-  const lvlBox=el("div",{style:{background:T().btnBg,border:`1px solid ${T().btnBorder}`,borderRadius:"12px",padding:"12px 16px",marginBottom:"16px"}});
-  lvlBox.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <span style="font-size:13px;font-weight:700;color:${T().text}">Level ${after.level}</span>
-      <span style="font-size:11px;color:${T().btnText}">${getLevelTitle(after.level)}</span>
-    </div>
-    <div style="background:${T().cellBorder};border-radius:99px;height:10px;overflow:hidden;margin-bottom:4px">
-      <div id="xp-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#ffd700,#ffaa00);border-radius:99px;transition:width 0.8s cubic-bezier(.4,0,.2,1)"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:${T().btnText}">
-      <span>${after.currentXp} XP</span><span>${after.neededXp} XP</span>
-    </div>`;
-  card.appendChild(lvlBox);
-
-  // Balken animieren
-  setTimeout(()=>{
-    const bar=document.getElementById("xp-bar");
-    if(bar) bar.style.width=`${pct}%`;
-  },100);
-
-  card.appendChild(primaryBtn(`Nochmal (${DIFF_LABELS[state.difficulty]})`,()=>startNewGame(state.difficulty)));
-  card.appendChild(secondaryBtn("Zum Menü",()=>{ stopTimer(); state.screen="menu"; render(); }));
-  app.appendChild(card);
+  state.selected = null; state.seconds = 0;
+  clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => { state.seconds++; updateTimerUi(); }, 1000);
+  state.screen = "game";
+  render();
 }
 
-// ── SPIEL ─────────────────────────────────────────────────────────
-function renderGame(){
-  if(!state.userGrid||!state.solution) return;
-  app.innerHTML="";
-  applyBg(app);
-  app.style.justifyContent="space-between";
-  app.style.padding="6px 4px 10px";
-  app.style.overflow="hidden";
-
-  const CELL=state.cellSize, PAD=2, boardW=CELL*9+PAD;
-  const activeCageId=state.selected?state.cageMap[`${state.selected[0]},${state.selected[1]}`]:null;
-  const activeCage=activeCageId!=null?state.cages[activeCageId]:null;
-
-  // Header
-  const hdr=el("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",width:`${boardW}px`,maxWidth:"97vw",flexShrink:"0",height:"48px"}});
-  hdr.appendChild(ghostBtn("← Menü",()=>{ stopTimer(); state.screen="menu"; render(); }));
-  const mid=el("div",{style:{textAlign:"center"}});
-  mid.innerHTML=`<div style="font-size:10px;color:${T().accent};letter-spacing:2px;font-weight:700;text-transform:uppercase">${DIFF_LABELS[state.difficulty]}</div>`;
-  if(state.showTimer){
-    const td=el("div",{id:"timer-display",style:{fontSize:"16px",color:T().timerColor,fontFamily:"monospace"}});
-    td.textContent=`⏱ ${fmt(state.seconds)}`; mid.appendChild(td);
+function updateTimerUi() {
+  const t = document.getElementById("timer-display");
+  if(t) {
+    const m = Math.floor(state.seconds/60).toString().padStart(2,'0');
+    const s = (state.seconds%60).toString().padStart(2,'0');
+    t.textContent = `${m}:${s}`;
   }
-  hdr.appendChild(mid);
-  hdr.appendChild(ghostBtn("⚙️",()=>{ stopTimer(); state.screen="options"; render(); }));
-  app.appendChild(hdr);
-
-  // Käfig-Banner
-  const banner=el("div",{style:{height:"24px",width:`${boardW}px`,maxWidth:"97vw",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:"0"}});
-  if(activeCage){
-    const isDone=state.completedCages.has(activeCageId);
-    const info=el("div",{style:{fontSize:"11px",color:activeCage.color,fontFamily:"monospace",fontWeight:"700",background:`${activeCage.color}18`,borderRadius:"8px",padding:"2px 12px",border:`1px solid ${activeCage.color}44`}});
-    info.textContent=`Käfig: Summe ${activeCage.sum} · ${activeCage.cells.length} Felder${isDone?" ✓":""}`;
-    banner.appendChild(info);
-  }
-  app.appendChild(banner);
-
-  // Board
-  const boardWrap=el("div",{style:{position:"relative",width:`${boardW}px`,height:`${boardW}px`,flexShrink:"0",maxWidth:"97vw"}});
-
-  // SVG
-  const svgNS="http://www.w3.org/2000/svg";
-  const svg=document.createElementNS(svgNS,"svg");
-  svg.setAttribute("width",boardW); svg.setAttribute("height",boardW);
-  Object.assign(svg.style,{position:"absolute",top:"0",left:"0",pointerEvents:"none",zIndex:"4"});
-
-  // Neon glow filter
-  const isNeon = T().glow;
-  if(isNeon){
-    const defs=document.createElementNS(svgNS,"defs");
-    defs.innerHTML=`
-      <filter id="neonGlow" x="-40%" y="-40%" width="180%" height="180%">
-        <feGaussianBlur stdDeviation="2.5" result="b"/>
-        <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-      <filter id="neonGlowStrong" x="-60%" y="-60%" width="220%" height="220%">
-        <feGaussianBlur stdDeviation="4" result="b"/>
-        <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>`;
-    svg.appendChild(defs);
-  }
-
-  function svgLine(x1,y1,x2,y2,stroke,sw,dash){
-    const l=document.createElementNS(svgNS,"line");
-    l.setAttribute("x1",x1);l.setAttribute("y1",y1);l.setAttribute("x2",x2);l.setAttribute("y2",y2);
-    l.setAttribute("stroke",stroke);l.setAttribute("stroke-width",sw);
-    if(dash)l.setAttribute("stroke-dasharray",dash);
-    l.setAttribute("stroke-linecap","round"); return l;
-  }
-
-  // Dünne innere Linien
-  for(let i=1;i<9;i++){
-    if(i%3===0)continue;
-    svg.appendChild(svgLine(PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,i*CELL+PAD/2,T().cellBorder,0.8,null,null));
-    svg.appendChild(svgLine(i*CELL+PAD/2,PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,T().cellBorder,0.8,null,null));
-  }
-
-  const cageStroke=Math.max(2.5,CELL*0.06);
-  const boxStroke=Math.max(1.5,CELL*0.032);
-
-  // Käfig-Ränder — alle in einer Gruppe mit Glow
-  const cageGroup=document.createElementNS(svgNS,"g");
-  if(isNeon) cageGroup.setAttribute("filter","url(#neonGlow)");
-  state.cages.forEach((cage,ci)=>{
-    const isDone=state.completedCages.has(ci);
-    const isActive=ci===activeCageId;
-    const sw=isActive?cageStroke*1.6:cageStroke;
-    const col=isDone?"#52b788":cage.color;
-    const dash=isDone?null:"5,3";
-    cage.cells.forEach(([r,c])=>{
-      const id=state.cageMap[`${r},${c}`];
-      const x=c*CELL+PAD/2,y=r*CELL+PAD/2,gp=2;
-      if(state.cageMap[`${r-1},${c}`]!==id) cageGroup.appendChild(svgLine(x+gp,y,x+CELL-gp,y,col,sw,dash));
-      if(state.cageMap[`${r+1},${c}`]!==id) cageGroup.appendChild(svgLine(x+gp,y+CELL,x+CELL-gp,y+CELL,col,sw,dash));
-      if(state.cageMap[`${r},${c-1}`]!==id) cageGroup.appendChild(svgLine(x,y+gp,x,y+CELL-gp,col,sw,dash));
-      if(state.cageMap[`${r},${c+1}`]!==id) cageGroup.appendChild(svgLine(x+CELL,y+gp,x+CELL,y+CELL-gp,col,sw,dash));
-    });
-  });
-  svg.appendChild(cageGroup);
-  // 3×3 Box-Linien
-  [3,6].forEach(i=>{
-    svg.appendChild(svgLine(PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,i*CELL+PAD/2,T().boxLine,boxStroke,null));
-    svg.appendChild(svgLine(i*CELL+PAD/2,PAD/2,i*CELL+PAD/2,9*CELL+PAD/2,T().boxLine,boxStroke,null));
-  });
-  // Außenrahmen
-  const rect=document.createElementNS(svgNS,"rect");
-  rect.setAttribute("x",PAD/2);rect.setAttribute("y",PAD/2);
-  rect.setAttribute("width",9*CELL);rect.setAttribute("height",9*CELL);
-  rect.setAttribute("fill","none");rect.setAttribute("stroke",T().outerLine);rect.setAttribute("stroke-width","2.5");
-  svg.appendChild(rect);
-  boardWrap.appendChild(svg);
-
-  // Zellen-Grid
-  const grid=el("div",{style:{display:"grid",gridTemplateColumns:`repeat(9,${CELL}px)`,position:"absolute",top:`${PAD/2}px`,left:`${PAD/2}px`}});
-
-  const sumSz=Math.max(7,Math.floor(CELL*0.19));
-  const valSz=Math.max(14,Math.floor(CELL*0.44));
-  const noteSz=Math.max(6,Math.floor(CELL*0.19));
-
-  state.userGrid.forEach((row,r)=>row.forEach((val,c)=>{
-    const cageIdx=state.cageMap[`${r},${c}`];
-    const cage=state.cages[cageIdx];
-    const isSel=state.selected&&state.selected[0]===r&&state.selected[1]===c;
-    const isActiveCageCell=cageIdx===activeCageId&&!isSel;
-    const isDoneCage=state.completedCages.has(cageIdx);
-    const selVal=state.selected?state.userGrid[state.selected[0]][state.selected[1]]:0;
-    const isSameNum=selVal>0&&val===selVal;
-    const isSameRow=state.selected&&(state.selected[0]===r||state.selected[1]===c);
-    const isSameBox=state.selected&&Math.floor(state.selected[0]/3)===Math.floor(r/3)&&Math.floor(state.selected[1]/3)===Math.floor(c/3);
-    const isWrong=state.showErrors&&val>0&&val!==state.solution[r][c];
-
-    let bg=T().cell;
-    if(isSel)bg=T().cellSel;
-    else if(isSameNum)bg=T().cellSameNum;
-    else if(isDoneCage)bg="rgba(82,183,136,0.13)";
-    else if(isActiveCageCell)bg=`${cage?.color||"#fff"}28`;
-    else if(isSameRow||isSameBox)bg=T().cellSameGroup;
-
-    const cell=el("div",{style:{width:`${CELL}px`,height:`${CELL}px`,background:bg,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxSizing:"border-box",transition:"background 0.08s",zIndex:"1",borderRight:`1px solid ${T().cellBorder}`,borderBottom:`1px solid ${T().cellBorder}`}});
-    cell.onclick=()=>selectCell(r,c);
-
-    // Käfig-Summe
-    const tl=cageTopLeft(cageIdx,state.cages);
-    if(tl[0]===r&&tl[1]===c){
-      const sumColor=isDoneCage?"#52b788":cage.color;
-      const sumGlow=isNeon?`0 0 6px ${sumColor}, 0 0 12px ${sumColor}60`:`0 0 5px ${T().bg}`;
-      const sum=el("span",{style:{position:"absolute",top:"1px",left:"2px",fontSize:`${isDoneCage?sumSz:cageIdx===activeCageId?sumSz*1.2:sumSz}px`,fontWeight:"900",color:sumColor,fontFamily:"monospace",lineHeight:"1",zIndex:"5",textShadow:sumGlow}});
-      sum.textContent=cage.sum+(isDoneCage?" ✓":""); cell.appendChild(sum);
-    }
-
-    // Notizen
-    if(val===0&&state.notes[r][c].size>0){
-      const ng=el("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",width:"92%",height:"92%",position:"absolute",padding:"1px",boxSizing:"border-box"}});
-      for(let n=1;n<=9;n++){
-        const ns=el("span",{style:{fontSize:`${noteSz}px`,textAlign:"center",lineHeight:`${Math.floor(CELL/3.2)}px`,color:state.notes[r][c].has(n)?T().noteColor:"transparent",fontFamily:"monospace"}});
-        ns.textContent=n; ng.appendChild(ns);
-      }
-      cell.appendChild(ng);
-    }
-
-    // Zahl
-    if(val>0){
-      const numColor=isWrong?T().textWrong:isDoneCage?"#80ff80":isNeon?cage.color:T().textCorrect;
-      const numGlow=isNeon?`0 0 6px ${numColor}, 0 0 14px ${numColor}, 0 0 28px ${numColor}80`:"none";
-      const vs=el("span",{style:{fontSize:`${valSz}px`,fontWeight:"700",color:numColor,fontFamily:isNeon?"'Orbitron', sans-serif":"Georgia,serif",transition:"color 0.15s",textShadow:numGlow}});
-      vs.textContent=val; cell.appendChild(vs);
-    }
-
-    grid.appendChild(cell);
-  }));
-
-  boardWrap.appendChild(grid);
-  app.appendChild(boardWrap);
-  window._boardRect=boardWrap.getBoundingClientRect.bind(boardWrap);
-
-  // Zahlenpad
-  const numpad=el("div",{style:{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:"3px",width:`${boardW}px`,maxWidth:"97vw",flexShrink:"0"}});
-  const counts={1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
-  state.userGrid.forEach(row=>row.forEach(v=>{if(v>0)counts[v]++;}));
-  const neonNumColors=["#ff6b6b","#ffa94d","#ffe066","#69db7c","#4ecdc4","#74c0fc","#da77f2","#ff9ff3","#a9e34b"];
-  for(let n=1;n<=9;n++){
-    const nColor=isNeon?neonNumColors[n-1]:T().text;
-    const nGlow=isNeon?`0 0 6px ${nColor}, 0 0 14px ${nColor}90`:"none";
-    const nBorder=isNeon?`1px solid ${nColor}50`:`1px solid ${T().btnBorder}`;
-    const nBg=isNeon?`${nColor}10`:T().btnBg;
-    const b=el("button",{style:{height:`${Math.max(36,Math.floor(state.actionBtnH*0.68))}px`,background:nBg,border:nBorder,color:nColor,borderRadius:"7px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",padding:"1px",opacity:counts[n]>=9?"0.18":"1",fontSize:`${Math.max(14,Math.floor(CELL*0.38))}px`,textShadow:nGlow}});
-    b.innerHTML=`<span style="line-height:1">${n}</span><span style="font-size:7px;color:${isNeon?nColor+"99":T().btnText};line-height:1;text-shadow:none">${9-counts[n]}</span>`;
-    b.onclick=()=>inputNum(n); numpad.appendChild(b);
-  }
-  app.appendChild(numpad);
-
-  // Aktions-Buttons
-  const actions=el("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px",width:`${boardW}px`,maxWidth:"97vw",flexShrink:"0"}});
-  const actionNeonColors=["#a080ff","#74c0fc","#ffe066"];
-  [
-    {label:"✏️",sub:"Notiz",active:state.noteMode,color:T().noteColor,fn:()=>{state.noteMode=!state.noteMode;renderGame();}},
-    {label:"↩",sub:"Undo",active:false,disabled:!state.history.length,fn:undoAction},
-    {label:"💡",sub:`(${state.hintsLeft})`,active:false,disabled:!state.hintsLeft||!state.selected,fn:giveHint},
-  ].forEach(({label:lbl,sub,active,color,disabled,fn},i)=>{
-    const nc=actionNeonColors[i];
-    const neonStyle=isNeon?{
-      background:active?`${nc}22`:`${nc}0a`,
-      border:`1px solid ${active?nc:nc+"55"}`,
-      color:nc,
-      textShadow:active?`0 0 8px ${nc}, 0 0 16px ${nc}`:`0 0 6px ${nc}`,
-      boxShadow:active?`0 0 12px ${nc}40, inset 0 0 8px ${nc}10`:`0 0 6px ${nc}20`,
-    }:{
-      background:active?T().cellSel:T().btnBg,
-      border:`1px solid ${active?(color||T().accent):T().btnBorder}`,
-      color:active?(color||T().text):T().btnText,
-    };
-    const b=el("button",{style:{height:`${state.actionBtnH}px`,borderRadius:"10px",cursor:disabled?"default":"pointer",fontSize:"22px",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"2px",opacity:disabled?"0.3":"1",transition:"all 0.12s",...neonStyle}});
-    b.innerHTML=`<span>${lbl}</span><span style="font-size:10px">${sub}</span>`;
-    b.onclick=disabled?null:fn; actions.appendChild(b);
-  });
-  app.appendChild(actions);
 }
 
-// ── SPIELLOGIK ─────────────────────────────────────────────────────
-function selectCell(r,c){
-  state.selected=[r,c];
-  renderGame();
+function inputNum(n) {
+  if(!state.selected) return;
+  const [r,c] = state.selected;
+  if(state.noteMode) {
+    if(n===0) state.notes[r][c].clear();
+    else if(state.notes[r][c].has(n)) state.notes[r][c].delete(n);
+    else state.notes[r][c].add(n);
+  } else {
+    state.userGrid[r][c] = state.userGrid[r][c] === n ? 0 : n;
+  }
+  render();
+  checkWin();
 }
 
-function inputNum(num){
-  if(!state.selected||!state.userGrid)return;
-  const [r,c]=state.selected;
-  if(navigator?.vibrate)navigator.vibrate(10);
-
-  if(state.noteMode&&num>0){
-    const s=new Set(state.notes[r][c]);
-    s.has(num)?s.delete(num):s.add(num);
-    state.notes[r][c]=s;
-    renderGame(); return;
-  }
-
-  // Falsche Zahl → schütteln
-  if(num>0&&state.showErrors&&num!==state.solution[r][c]){
-    state.hadErrors=true;
-    if(navigator?.vibrate)navigator.vibrate([30,20,30]);
-    renderGame();
-    // Zelle schütteln
-    setTimeout(()=>{
-      const cells=document.querySelectorAll("#app > div[style*='grid'] > div");
-      const idx=r*9+c;
-      if(cells[idx]){cells[idx].classList.add("shake");setTimeout(()=>cells[idx].classList.remove("shake"),500);}
-    },10);
-  }
-
-  state.history.push(JSON.stringify(state.userGrid));
-  if(state.history.length>30)state.history.shift();
-  state.userGrid[r][c]=num;
-
-  if(num>0){
-    for(let ri=0;ri<9;ri++) for(let ci=0;ci<9;ci++){
-      const sameBox=Math.floor(ri/3)===Math.floor(r/3)&&Math.floor(ci/3)===Math.floor(c/3);
-      const sameCage=state.cageMap[`${ri},${ci}`]===state.cageMap[`${r},${c}`];
-      if(ri===r||ci===c||sameBox||sameCage) state.notes[ri][ci].delete(num);
+function checkWin() {
+  for(let r=0;r<9;r++) {
+    for(let c=0;c<9;c++) {
+      if(state.userGrid[r][c] !== state.solution[r][c]) return;
     }
   }
+  clearInterval(state.timerInterval);
+  alert("🎉 Geflasht! Du hast das Rätsel gelöst!");
+  state.screen = "menu";
+  render();
+}
 
-  // Käfig-Check
-  const cageIdx=state.cageMap[`${r},${c}`];
-  if(cageIdx!=null&&!state.completedCages.has(cageIdx)){
-    if(isCageDone(state.cages[cageIdx],state.userGrid)){
-      state.completedCages.add(cageIdx);
-      if(navigator?.vibrate)navigator.vibrate([10,30,60]);
-      // Partikel
-      setTimeout(()=>{
-        const rect=boardWrap_getBounds();
-        if(rect){
-          const CELL=state.cellSize, PAD=2;
-          state.cages[cageIdx].cells.forEach(([cr,cc])=>{
-            spawnCageParticles(rect.left+PAD/2+cc*CELL, rect.top+PAD/2+cr*CELL, CELL, CELL, state.cages[cageIdx].color);
-          });
+// ── UI RENDERER ──────────────────────────────────────────────────
+const app = document.getElementById("app");
+
+function render() {
+  app.innerHTML = "";
+  if(state.screen === "menu") {
+    app.innerHTML = `
+      <div class="menu-title">NEO SUDOKU</div>
+      <button class="menu-btn" onclick="initGame('Einfach')">EINFACH</button>
+      <button class="menu-btn" onclick="initGame('Normal')">NORMAL</button>
+      <button class="menu-btn" onclick="initGame('Schwer')">SCHWER</button>
+      <button class="menu-btn" onclick="initGame('Boshaft')">BOSHAFT</button>
+      <button class="menu-btn battle-btn" onclick="window.location.href='battle.html'">⚔️ BATTLE MODUS</button>
+    `;
+  } else if(state.screen === "game") {
+    // Top Bar
+    const topBar = document.createElement("div");
+    topBar.className = "top-bar";
+    topBar.innerHTML = `<span>${state.difficulty.toUpperCase()}</span><span id="timer-display">00:00</span>`;
+    app.appendChild(topBar);
+
+    // Board
+    const board = document.createElement("div");
+    board.className = "board";
+    
+    for(let r=0; r<9; r++) {
+      for(let c=0; c<9; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        
+        const cageIdx = state.cageMap[`${r},${c}`];
+        const cage = state.cages[cageIdx];
+        if(cage) cell.style.background = cage.color;
+
+        // Zeige Summe links oben im ersten Cage-Feld
+        const isTopLeft = cage.cells[0][0] === r && cage.cells[0][1] === c;
+        if(isTopLeft) {
+          const sumEl = document.createElement("div");
+          sumEl.className = "cage-sum";
+          sumEl.textContent = cage.sum;
+          cell.appendChild(sumEl);
         }
-      },30);
-    }
-  }
 
-  saveGame({solution:state.solution,cages:state.cages,cageMap:state.cageMap,userGrid:state.userGrid,difficulty:state.difficulty,seconds:state.seconds,hintsLeft:state.hintsLeft});
+        // Selektion & Highlights
+        if(state.selected && state.selected[0]===r && state.selected[1]===c) cell.classList.add("selected");
+        else if(state.selected && state.userGrid[r][c] && state.userGrid[r][c] === state.userGrid[state.selected[0]][state.selected[1]]) cell.classList.add("same-num");
 
-  // Win-Check
-  if(state.userGrid.every((row,ri)=>row.every((v,ci)=>v===state.solution[ri][ci]))){
-    stopTimer();
-    localStorage.removeItem("ks_save");
-    const stats=recordWin(state.difficulty,state.seconds);
-    state.newBest=stats[state.difficulty].count===1||stats[state.difficulty].best===state.seconds;
-    // XP vergeben
-    state.xpGain=calcXpGain(state.difficulty,state.seconds,state.usedHints,!state.hadErrors);
-    state.levelUpResult=addXP(state.xpGain.total);
-    setTimeout(spawnConfetti,100);
-    if(state.levelUpResult.levelUp) setTimeout(spawnConfetti,600);
-    state.screen="won"; render(); return;
-  }
-  renderGame();
-}
+        // Werte oder Notizen eintragen
+        const val = state.userGrid[r][c];
+        if(val !== 0) {
+          cell.appendChild(document.createTextNode(val));
+          if(val !== state.solution[r][c]) cell.classList.add("err");
+        } else {
+          const nGrid = document.createElement("div");
+          nGrid.className = "notes-grid";
+          for(let i=1; i<=9; i++) {
+            const nCell = document.createElement("div");
+            nCell.className = "note-cell";
+            if(state.notes[r][c].has(i)) nCell.textContent = i;
+            nGrid.appendChild(nCell);
+          }
+          cell.appendChild(nGrid);
+        }
 
-function boardWrap_getBounds(){
-  // Holt die Board-Position für Partikel
-  const boardEl=document.querySelector("#app > div[style*='relative']");
-  return boardEl?boardEl.getBoundingClientRect():null;
-}
-
-function undoAction(){
-  if(!state.history.length)return;
-  state.userGrid=JSON.parse(state.history.pop());
-  renderGame();
-}
-
-function giveHint(){
-  if(!state.hintsLeft||!state.selected)return;
-  state.usedHints=true;
-  const [r,c]=state.selected;
-  if(state.userGrid[r][c]===state.solution[r][c])return;
-  state.history.push(JSON.stringify(state.userGrid));
-  state.userGrid[r][c]=state.solution[r][c];
-  state.hintsLeft--;
-  const cageIdx=state.cageMap[`${r},${c}`];
-  if(cageIdx!=null&&!state.completedCages.has(cageIdx)&&isCageDone(state.cages[cageIdx],state.userGrid)){
-    state.completedCages.add(cageIdx);
-    setTimeout(()=>{
-      const rect=boardWrap_getBounds();
-      if(rect){
-        const CELL=state.cellSize,PAD=2;
-        state.cages[cageIdx].cells.forEach(([cr,cc])=>{
-          spawnCageParticles(rect.left+PAD/2+cc*CELL,rect.top+PAD/2+cr*CELL,CELL,CELL,state.cages[cageIdx].color);
-        });
+        cell.onclick = () => { state.selected = [r,c]; render(); };
+        board.appendChild(cell);
       }
-    },30);
+    }
+    app.appendChild(board);
+
+    // Keypad
+    const keypad = document.createElement("div");
+    keypad.className = "keypad";
+    for(let i=1; i<=9; i++) {
+      const key = document.createElement("button");
+      key.className = "key";
+      key.textContent = i;
+      key.onclick = () => inputNum(i);
+      keypad.appendChild(key);
+    }
+    
+    // Steuer-Tasten
+    const noteKey = document.createElement("button");
+    noteKey.className = `key ${state.noteMode ? 'active' : ''}`;
+    noteKey.textContent = "📝";
+    noteKey.onclick = () => { state.noteMode = !state.noteMode; render(); };
+    keypad.appendChild(noteKey);
+
+    const delKey = document.createElement("button");
+    delKey.className = "key";
+    delKey.textContent = "⌫";
+    delKey.onclick = () => inputNum(0);
+    keypad.appendChild(delKey);
+
+    app.appendChild(keypad);
+
+    // Zurück Button
+    const back = document.createElement("button");
+    back.className = "menu-btn";
+    back.style.marginTop = "20px";
+    back.textContent = "← HAUPTMENÜ";
+    back.onclick = () => { clearInterval(state.timerInterval); state.screen = "menu"; render(); };
+    app.appendChild(back);
+    
+    updateTimerUi();
   }
-  if(state.userGrid.every((row,ri)=>row.every((v,ci)=>v===state.solution[ri][ci]))){
-    stopTimer();
-    localStorage.removeItem("ks_save");
-    const stats=recordWin(state.difficulty,state.seconds);
-    state.newBest=stats[state.difficulty].count===1||stats[state.difficulty].best===state.seconds;
-    state.xpGain=calcXpGain(state.difficulty,state.seconds,state.usedHints,!state.hadErrors);
-    state.levelUpResult=addXP(state.xpGain.total);
-    setTimeout(spawnConfetti,100);
-    if(state.levelUpResult.levelUp) setTimeout(spawnConfetti,600);
-    state.screen="won"; render(); return;
-  }
-  renderGame();
 }
 
-function startNewGame(diff){
-  stopTimer();
-  state.difficulty=diff;
-  state.solution=generateSolution();
-  state.cages=generateCages(state.solution,diff);
-  state.cageMap=buildCageMap(state.cages);
-  state.userGrid=Array.from({length:9},()=>Array(9).fill(0));
-  state.notes=Array.from({length:9},()=>Array.from({length:9},()=>new Set()));
-  state.history=[]; state.seconds=0; state.hintsLeft=3;
-  state.completedCages=new Set(); state.newBest=false;
-  state.xpGain=null; state.levelUpResult=null;
-  state.hadErrors=false; state.usedHints=false;
-  state.selected=null; state.noteMode=false;
-  state.screen="game"; render(); startTimer();
-}
-
-function continueGame(){
-  const s=loadGame(); if(!s)return;
-  stopTimer();
-  state.solution=s.solution; state.cages=s.cages; state.cageMap=s.cageMap;
-  state.userGrid=s.userGrid; state.difficulty=s.difficulty;
-  state.seconds=s.seconds||0; state.hintsLeft=s.hintsLeft??3;
-  state.notes=Array.from({length:9},()=>Array.from({length:9},()=>new Set()));
-  state.history=[]; state.completedCages=new Set(); state.selected=null;
-  state.screen="game"; render(); startTimer();
-}
-
-// Tastatur
-window.addEventListener("keydown",e=>{
-  if(state.screen!=="game"||!state.selected)return;
-  const [r,c]=state.selected;
-  if(e.key>="1"&&e.key<="9"){inputNum(parseInt(e.key));}
-  else if(["Backspace","Delete","0"].includes(e.key)){inputNum(0);}
-  else if(e.key==="n"||e.key==="N"){state.noteMode=!state.noteMode;renderGame();}
-  else if(e.key==="ArrowUp"   &&r>0){state.selected=[r-1,c];renderGame();}
-  else if(e.key==="ArrowDown" &&r<8){state.selected=[r+1,c];renderGame();}
-  else if(e.key==="ArrowLeft" &&c>0){state.selected=[r,c-1];renderGame();}
-  else if(e.key==="ArrowRight"&&c<8){state.selected=[r,c+1];renderGame();}
+// Keyboard Listener
+window.addEventListener("keydown", e => {
+  if(state.screen !== "game" || !state.selected) return;
+  if(e.key >= "1" && e.key <= "9") inputNum(parseInt(e.key));
+  else if(["Backspace", "Delete", "0"].includes(e.key)) inputNum(0);
+  else if(e.key === "n" || e.key === "N") { state.noteMode = !state.noteMode; render(); }
 });
 
-// Start
 render();
 </script>
 </body>
