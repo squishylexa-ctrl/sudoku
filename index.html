@@ -343,20 +343,6 @@ function inputNum(n) {
   render(); saveCurrentState(); checkWin();
 }
 
-function giveHint() {
-  if(!state.selected) return; const [r, c] = state.selected; if(state.userGrid[r][c] === state.solution[r][c]) return;
-  pushHistory(); state.userGrid[r][c] = state.solution[r][c]; state.notes[r][c].clear(); state.usedHints = true;
-  state.cages.forEach((cage, idx) => { if(!state.completedCages.has(idx) && isCageDone(cage, state.userGrid)) state.completedCages.add(idx); });
-  render(); saveCurrentState(); checkWin();
-}
-
-function checkWin() {
-  for(let r=0;r<9;r++) { for(let c=0;c<9;c++) { if(state.userGrid[r][c] !== state.solution[r][c]) return; } }
-  stopTimer(); localStorage.removeItem("ks_save");
-  const gain = calcXpGain(state.difficulty, state.seconds, state.usedHints, state.hadErrors); const res = addXP(gain.total); recordWin(state.difficulty, state.seconds);
-  state.screen = "victory"; state.victoryLayout = { gain, res }; render(); spawnConfetti();
-}
-
 // ── UI RENDERING ───────────────────────────────────────────────────
 const app = document.getElementById("app");
 
@@ -397,7 +383,7 @@ function render() {
     });
     html += `</div>`;
     
-    // DER LINK ZUM BATTLE MODUS IM HAUPTMENÜ
+    // DER BUTTON FÜR DEN BATTLE MODUS IM HAUPTMENÜ
     html += `<button onclick="window.location.href='battle.html'" style="width:100%; padding:14px; margin-bottom:15px; border-radius:10px; font-weight:700; background:rgba(255,64,255,0.05); border:2px solid #ff40ff; color:#ff40ff; font-size:13px; font-family:'Orbitron',sans-serif; box-shadow:0 0 10px rgba(255,64,255,0.2);">⚔️ BATTLE MODUS</button>`;
 
     html += `<button id="btn-settings" style="width:100%; padding:11px; border-radius:8px; background:transparent; border:1px solid ${th.btnBorder}; color:${th.btnText}; font-size:11px; font-weight:700;">⚙️ Einstellungen & Daten</button>`;
